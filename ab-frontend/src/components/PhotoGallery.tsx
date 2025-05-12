@@ -1,78 +1,100 @@
-import { useState, useEffect } from 'react'
-import gsap from 'gsap'
-import { FiX } from 'react-icons/fi'
+// src/components/PhotoGallery.tsx
+import React, { useState, useEffect } from 'react'
+import { motion, LayoutGroup, AnimatePresence } from 'framer-motion'
 
-const PAGE_SIZE = 30 // Ajusta este valor según tu preferencia
+interface PhotosJSON {
+  photos: string[]
+}
+
+const PAGE_SIZE = 30
+
+// Animación para entrada de cada foto
+const photoVariants = {
+  hidden: { opacity: 0, y: 80 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: 'easeOut' } }
+}
 
 export default function PhotoGallery() {
   const [photos, setPhotos] = useState<string[]>([])
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
-  const [selected, setSelected] = useState<string | null>(null)
+  const [expandedSrc, setExpandedSrc] = useState<string | null>(null)
 
+  // Carga fotos desde public/assets/photos.json
   useEffect(() => {
-    // Animación inicial cinemática
-    gsap.from('.gallery', { opacity: 0, y: 30, duration: 1, ease: 'power3.out' })
-
-    // Carga del JSON de fotos
     fetch('/assets/photos.json')
-      .then((response) => response.json())
-      .then((data) => setPhotos(data.photos))
-      .catch((error) => console.error('Error cargando photos.json:', error))
+      .then(r => r.json())
+      .then((data: PhotosJSON) => setPhotos(data.photos))
+      .catch(console.error)
   }, [])
 
-  const loadMore = () => {
-    setVisibleCount((count) => Math.min(photos.length, count + PAGE_SIZE))
-  }
+  const loadMore = () =>
+    setVisibleCount(count => Math.min(photos.length, count + PAGE_SIZE))
 
   return (
-    <>
-      {/* Galería de Miniaturas */}
-      <div className="gallery grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 p-4">
-        {photos.slice(0, visibleCount).map((path) => (
-          <div
-            key={path}
-            className="relative overflow-hidden rounded-lg cursor-pointer"
-            onClick={() => setSelected(path)}
-          >
-            <img
-              src={`/assets/${path}`}
-              loading="lazy"
-              className="w-full h-auto object-contain transition-transform duration-300 hover:scale-105"
-              alt=""
-            />
+    <LayoutGroup>
+      <div className="min-h-screen bg-gray-900 text-white">
+        <h1 className="text-center text-4xl font-bold py-8">Mi Portafolio</h1>
+
+        {/* Galería */}
+        <div className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 p-4">
+          {photos.slice(0, visibleCount).map((src) => (
+            <motion.div
+              key={src}
+              layoutId={src}                      // mismo ID para morphing
+              className="rounded-lg overflow-hidden cursor-pointer"
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.4 }}
+              variants={photoVariants}
+              onClick={() => setExpandedSrc(src)}
+            >
+              <motion.img
+                src={`/assets/${src}`}
+                alt=""
+                loading="lazy"
+                className="w-full h-auto object-contain"
+                layout                                // activa layout animation
+                transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              />
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Cargar más */}
+        {visibleCount < photos.length && (
+          <div className="text-center mt-12 mb-8">
+            <button
+              onClick={loadMore}
+              className="px-6 py-3 bg-indigo-600 rounded-full hover:bg-indigo-500 transition"
+            >
+              Cargar más
+            </button>
           </div>
-        ))}
+        )}
+
+        {/* Overlay expandido */}
+        <AnimatePresence>
+          {expandedSrc && (
+            <motion.div
+              className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setExpandedSrc(null)}
+            >
+              <motion.img
+                src={`/assets/${expandedSrc}`}
+                alt=""
+                className="object-contain"
+                layoutId={expandedSrc}             // coincide con la miniatura
+                layout                              // morphing
+                transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                style={{ maxWidth: '90vw', maxHeight: '90vh' }}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-
-      {/* Botón "Cargar más" */}
-      {visibleCount < photos.length && (
-        <div className="text-center my-4">
-          <button
-            onClick={loadMore}
-            className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition"
-          >
-            Cargar más
-          </button>
-        </div>
-      )}
-
-      {/* Overlay de Foto Seleccionada */}
-      {selected && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4"
-          onClick={() => setSelected(null)}
-        >
-          <button className="absolute top-6 right-6 text-white text-2xl">
-            <FiX />
-          </button>
-          <img
-            src={`/assets/${selected}`}
-            loading="lazy"
-            className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
-            alt="Selected photo"
-          />
-        </div>
-      )}
-    </>
+    </LayoutGroup>
   )
 }
