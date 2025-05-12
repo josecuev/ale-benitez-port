@@ -1,11 +1,12 @@
-import { Button } from "@/components/ui/button"
- 
-function App() {
+import PhotoGallery from '@/components/PhotoGallery'
+
+export default function App() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-svh">
-      <Button>Click me</Button>
+    <div className="min-h-screen bg-white text-gray-900">
+      <header className="py-6 text-center text-3xl font-bold">
+        Mi Portafolio Fotográfico
+      </header>
+      <PhotoGallery />
     </div>
   )
 }
- 
-export default App
