@@ -1,8 +1,0 @@
-services:
-  nginx:
-    image: nginx:stable-alpine
-    ports:
-      - "80:80"
-    volumes:
-      - ./webpage:/usr/share/nginx/html:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
