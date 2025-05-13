@@ -28,11 +28,10 @@ export default function PhotoGallery() {
   return (
     <LayoutGroup>
       <div className="min-h-screen bg-black text-white flex flex-col">
-        {/* Barra superior amarilla, más alta y con nombre alineado a la derecha */}
+        {/* Barra superior amarilla fija */}
         <header
-          className="w-full h-16 bg-[#FFF500] flex items-center px-8"
+          className="sticky top-0 z-20 w-full h-16 bg-[#FFF500] flex items-center px-8"
         >
-          {/* Espacio flexible para empujar el texto al final */}
           <div className="flex-grow" />
           <span
             className="font-sans text-2xl text-black uppercase tracking-wide"
@@ -42,8 +41,8 @@ export default function PhotoGallery() {
           </span>
         </header>
 
-        {/* Galería */}
-        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 p-2">
+        {/* Galería (scrollable bajo el header) */}
+        <div className="flex-1 overflow-auto p-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
           {photos.slice(0, visibleCount).map(src => (
             <motion.div
               key={src}
