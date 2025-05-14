@@ -10,6 +10,11 @@ const photoVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: 'easeOut' } }
 }
 
+const nameVariants = {
+  normal: { color: '#000', fontSize: '1.5rem' },
+  expanded: { color: '#fff', fontSize: '2rem' },
+}
+
 export default function PhotoGallery() {
   const [photos, setPhotos] = useState<string[]>([])
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
@@ -28,20 +33,22 @@ export default function PhotoGallery() {
   return (
     <LayoutGroup>
       <div className="min-h-screen bg-black text-white flex flex-col">
-        {/* Barra superior amarilla fija */}
-        <header
-          className="sticky top-0 z-20 w-full h-16 bg-[#FFF500] flex items-center px-8"
-        >
-          <div className="flex-grow" />
-          <span
-            className="font-sans text-2xl text-black uppercase tracking-wide"
-            style={{ fontFamily: 'Roboto, sans-serif' }}
-          >
-            Alejandro Benítez
-          </span>
-        </header>
+        {!expandedSrc && (
+          <header className="sticky top-0 z-20 w-full h-16 bg-[#FFF500] flex items-center px-8">
+            <div className="flex-grow" />
+            <motion.span
+              layoutId="profileName"
+              variants={nameVariants}
+              initial="normal"
+              animate="normal"
+              className="font-sans uppercase tracking-wide"
+              style={{ fontFamily: 'Roboto, sans-serif' }}
+            >
+              Alejandro Benítez
+            </motion.span>
+          </header>
+        )}
 
-        {/* Galería (scrollable bajo el header) */}
         <div className="flex-1 overflow-auto p-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
           {photos.slice(0, visibleCount).map(src => (
             <motion.div
@@ -66,8 +73,7 @@ export default function PhotoGallery() {
           ))}
         </div>
 
-        {/* Botón "Cargar más" */}
-        {visibleCount < photos.length && (
+        {visibleCount < photos.length && !expandedSrc && (
           <div className="py-6 flex justify-center">
             <button
               onClick={loadMore}
@@ -79,23 +85,44 @@ export default function PhotoGallery() {
           </div>
         )}
 
-        {/* Overlay expandido */}
         <AnimatePresence>
           {expandedSrc && (
             <motion.div
-              className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+              className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setExpandedSrc(null)}
             >
               <motion.img
                 src={`/assets/${expandedSrc}`}
                 alt=""
                 className="max-w-full max-h-full object-contain"
                 layoutId={expandedSrc}
-                layout
                 transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              />
+
+              <motion.span
+                layoutId="profileName"
+                variants={nameVariants}
+                initial="normal"
+                animate="expanded"
+                className="absolute bottom-6 right-6 font-sans uppercase tracking-wide"
+                style={{ fontFamily: 'Roboto, sans-serif' }}
+              >
+                Alejandro Benítez
+              </motion.span>
+
+              <motion.div
+                className="absolute bottom-2 right-6 text-white font-sans text-lg"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1, transition: { delay: 0.3 } }}
+              >
+                +595 986 966 064
+              </motion.div>
+
+              <div
+                className="absolute inset-0 z-40"
+                onClick={() => setExpandedSrc(null)}
               />
             </motion.div>
           )}
