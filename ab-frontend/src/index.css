@@ -1,5 +1,22 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
+
+.bebas-neue-regular {
+  font-family: "Bebas Neue", sans-serif !important;
+  font-weight: 400;
+  font-style: normal;
+}
+
+/* Agrega esta nueva clase */
+.font-bebas {
+  font-family: "Bebas Neue", sans-serif !important;
+  font-weight: 400;
+  font-style: normal;
+}
+
+/* resto de tu CSS... */
+
 
 @custom-variant dark (&:is(.dark *));
 
