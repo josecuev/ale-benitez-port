@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   traefik:
     image: traefik:v2.10
@@ -29,11 +27,11 @@ services:
     ports:
       - "3333:80"
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.ab-frontend.rule=Host(`frontend.localhost`)"
-      - "traefik.http.routers.ab-frontend.entrypoints=websecure"
-      - "traefik.http.routers.ab-frontend.tls=true"
-      - "traefik.http.routers.ab-frontend.tls.certresolver=le"
+    - "traefik.enable=true"
+    - "traefik.http.routers.ab-frontend.rule=Host(`www.alejandrobenitez.com`) || Host(`alejandrobenitez.com`)"
+    - "traefik.http.routers.ab-frontend.entrypoints=websecure"
+    - "traefik.http.routers.ab-frontend.tls=true"
+    - "traefik.http.routers.ab-frontend.tls.certresolver=le"
 
 volumes:
   traefik-certs:
