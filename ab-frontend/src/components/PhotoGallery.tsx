@@ -1,6 +1,6 @@
 // src/components/PhotoGallery.tsx
 import React, { useState, useEffect, useCallback } from 'react'
-import { motion, LayoutGroup, AnimatePresence } from 'framer-motion'
+import { motion, LayoutGroup, AnimatePresence, useDragControls } from 'framer-motion'
 
 interface PhotosJSON { photos: string[] }
 const PAGE_SIZE = 30
@@ -20,6 +20,7 @@ export default function PhotoGallery() {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const [expandedSrc, setExpandedSrc] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const dragControls = useDragControls()
 
   useEffect(() => {
     fetch('/assets/photos.json')
@@ -83,7 +84,7 @@ export default function PhotoGallery() {
 
         {/* Grid principal con scrollbar oculto */}
         <div 
-          className="flex-1 p-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2"
+          className="flex-1 p-2 pt-18 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2"
           style={{
             scrollbarWidth: 'none', // Firefox
             msOverflowStyle: 'none', // IE/Edge
@@ -147,11 +148,29 @@ export default function PhotoGallery() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              drag
+              dragControls={dragControls}
+              dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+              dragElastic={0.2}
+              onDragEnd={(event, info) => {
+                // Cerrar si se hace swipe hacia arriba, abajo, izquierda o derecha con suficiente velocidad
+                const threshold = 50
+                const velocity = 300
+                
+                if (
+                  Math.abs(info.offset.y) > threshold || 
+                  Math.abs(info.offset.x) > threshold ||
+                  Math.abs(info.velocity.y) > velocity ||
+                  Math.abs(info.velocity.x) > velocity
+                ) {
+                  setExpandedSrc(null)
+                }
+              }}
             >
               <motion.img
                 src={`/assets/${expandedSrc}`}
                 alt="Imagen expandida"
-                className="max-w-full max-h-full object-contain select-none"
+                className="max-w-full max-h-full object-contain select-none pointer-events-none"
                 layoutId={expandedSrc}
                 transition={{ type: 'spring', stiffness: 300, damping: 25 }}
                 draggable={false}
@@ -162,7 +181,7 @@ export default function PhotoGallery() {
                 variants={nameVariants}
                 initial="normal"
                 animate="expanded"
-                className="absolute bottom-6 right-6 bebas-neue-regular uppercase tracking-wide text-white select-none"
+                className="absolute bottom-6 right-6 bebas-neue-regular uppercase tracking-wide text-white select-none pointer-events-none"
                 style={{ 
                   fontFamily: '"Bebas Neue", sans-serif',
                   fontWeight: 400,
@@ -173,7 +192,7 @@ export default function PhotoGallery() {
               </motion.span>
 
               <motion.div
-                className="absolute bottom-2 right-6 text-white bebas-neue-regular text-lg select-none"
+                className="absolute bottom-2 right-6 text-white bebas-neue-regular text-lg select-none pointer-events-none"
                 style={{ 
                   fontFamily: '"Bebas Neue", sans-serif',
                   fontWeight: 400,
