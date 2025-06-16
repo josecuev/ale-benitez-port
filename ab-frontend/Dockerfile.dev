@@ -1,0 +1,23 @@
+# Dockerfile.dev
+FROM node:18-alpine
+WORKDIR /app
+
+# Habilita corepack + pnpm
+RUN corepack enable \
+  && corepack prepare pnpm@latest --activate
+
+# Copia solo definición de dependencias
+COPY ab-frontend/package.json ab-frontend/pnpm-lock.yaml ./
+
+# Instala dependencias sin congelar (útil en desarrollo)
+RUN pnpm install
+
+# Copia el resto del proyecto
+COPY ab-frontend/. .
+
+# Expone el puerto de Vite (por defecto 5173)
+EXPOSE 5173
+
+# Comando de desarrollo (Vite dev server con hot reload)
+# Exponer Vite a todas las interfaces
+CMD ["pnpm", "dev", "--host"]

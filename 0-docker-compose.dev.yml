@@ -1,0 +1,13 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: ab-frontend/Dockerfile.dev
+    container_name: ab-frontend-dev
+    volumes:
+      - ./ab-frontend:/app
+      - /app/node_modules  # Evita sobrescribir node_modules con bind mount
+    ports:
+      - "5173:5173"  # Puerto del Vite dev server
+    environment:
+      - NODE_ENV=development
