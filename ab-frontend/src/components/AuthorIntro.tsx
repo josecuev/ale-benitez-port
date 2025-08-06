@@ -10,13 +10,6 @@ export default function AuthorIntro() {
     offset: ["start start", "end start"]
   })
   
-  // Fases del scroll ajustadas
-  // 0-15%: Solo foto
-  // 15-25%: Aparece el nombre
-  // 25-60%: Se revela progresivamente la biografía
-  // 60-80%: Todo el texto visible y legible
-  // 80-100%: Espacio extra antes de la galería
-  
   // La imagen siempre mantiene opacidad 1, solo cambia la escala
   const imageScale = useTransform(scrollYProgress, [0, 0.7], [1, 1.1])
   
@@ -45,25 +38,70 @@ Soy Alejandro Benítez. Fotógrafo con más de 12 años de experiencia, master e
         .century-gothic {
           font-family: 'Century Gothic', CenturyGothic, 'Segoe UI', sans-serif;
         }
+        
+        /* Ajustes responsivos para la imagen */
+        .author-image {
+          object-fit: cover;
+          object-position: center center;
+        }
+        
+        /* En pantallas móviles - mostrar más la cara */
+        @media (max-width: 768px) {
+          .author-image {
+            object-position: center 20%;
+          }
+        }
+        
+        /* En pantallas medianas */
+        @media (min-width: 769px) and (max-width: 1024px) {
+          .author-image {
+            object-position: center 30%;
+          }
+        }
+        
+        /* En pantallas anchas - ajustar para no cortar la frente */
+        @media (min-width: 1025px) {
+          .author-image {
+            object-position: center 35%;
+          }
+        }
+        
+        /* En pantallas muy anchas - posiblemente usar contain */
+        @media (min-width: 1920px) {
+          .author-image {
+            object-fit: contain;
+            background-color: #000;
+          }
+        }
       `}</style>
 
       {/* Contenedor con más altura para espacio extra después del texto */}
       <div ref={containerRef} className="relative w-full h-[300vh]">
         {/* Contenido sticky */}
-        <div className="sticky top-0 w-full h-screen overflow-hidden">
+        <div className="sticky top-0 w-full h-screen overflow-hidden bg-black">
           
-          {/* Imagen del autor siempre visible */}
+          {/* Contenedor de imagen con aspect ratio controlado */}
           <motion.div 
-            className="absolute inset-0 w-full h-full"
+            className="absolute inset-0 w-full h-full flex items-center justify-center"
             style={{
               scale: imageScale,
             }}
           >
+            {/* Opción 1: Imagen adaptativa con object-position */}
             <img
               src="/assets/photos/0-ale/ale.jpeg"
               alt="Alejandro Benítez"
-              className="w-full h-full object-cover"
+              className="w-full h-full author-image"
             />
+            
+            {/* Opción 2 (alternativa): Contenedor con max-width para pantallas muy anchas */}
+            {/* <div className="w-full h-full max-w-[1600px] mx-auto">
+              <img
+                src="/assets/photos/0-ale/ale.jpeg"
+                alt="Alejandro Benítez"
+                className="w-full h-full object-cover object-[center_30%]"
+              />
+            </div> */}
           </motion.div>
 
           {/* Overlay negro que oscurece gradualmente la imagen */}
@@ -86,7 +124,7 @@ Soy Alejandro Benítez. Fotógrafo con más de 12 años de experiencia, master e
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="max-w-5xl mx-auto px-8 md:px-12 lg:px-16 text-center">
               
-              {/* Nombre del fotógrafo - Mantiene Bebas Neue (similar a KIONA REGULAR) */}
+              {/* Nombre del fotógrafo - Mantiene Bebas Neue */}
               <motion.h1
                 className="bebas-neue-regular text-5xl md:text-7xl lg:text-8xl text-[#FFF500] mb-12 uppercase tracking-wider"
                 style={{ 
