@@ -38,6 +38,15 @@ Soy Alejandro Benítez. Fotógrafo con más de 12 años de experiencia, master e
 
   return (
     <>
+      {/* Agregar estilos para Century Gothic */}
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Century+Gothic&display=swap');
+        
+        .century-gothic {
+          font-family: 'Century Gothic', CenturyGothic, 'Segoe UI', sans-serif;
+        }
+      `}</style>
+
       {/* Contenedor con más altura para espacio extra después del texto */}
       <div ref={containerRef} className="relative w-full h-[300vh]">
         {/* Contenido sticky */}
@@ -77,9 +86,9 @@ Soy Alejandro Benítez. Fotógrafo con más de 12 años de experiencia, master e
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="max-w-5xl mx-auto px-8 md:px-12 lg:px-16 text-center">
               
-              {/* Nombre del fotógrafo */}
+              {/* Nombre del fotógrafo - Mantiene Bebas Neue (similar a KIONA REGULAR) */}
               <motion.h1
-                className="bebas-neue-regular text-5xl md:text-7xl lg:text-8xl text-[#FFF500] mb-12"
+                className="bebas-neue-regular text-5xl md:text-7xl lg:text-8xl text-[#FFF500] mb-12 uppercase tracking-wider"
                 style={{ 
                   fontFamily: '"Bebas Neue", sans-serif',
                   fontWeight: 400,
@@ -92,10 +101,10 @@ Soy Alejandro Benítez. Fotógrafo con más de 12 años de experiencia, master e
                 ALEJANDRO BENÍTEZ
               </motion.h1>
               
-              {/* Biografía con aparición progresiva */}
+              {/* Biografía con Century Gothic según manual de marca */}
               <div className="text-white/95 text-base md:text-lg lg:text-xl leading-relaxed space-y-3">
                 {lines.map((line, index) => {
-                  // Calcular cuándo debe aparecer cada línea (terminando antes para dar espacio)
+                  // Calcular cuándo debe aparecer cada línea
                   const startProgress = 0.22 + (index * 0.33 / lines.length)
                   const endProgress = Math.min(startProgress + 0.05, 0.55)
                   
@@ -114,8 +123,11 @@ Soy Alejandro Benítez. Fotógrafo con más de 12 años de experiencia, master e
                   return (
                     <motion.p
                       key={index}
-                      className="mb-2"
+                      className="mb-2 century-gothic"
                       style={{
+                        fontFamily: "'Century Gothic', CenturyGothic, sans-serif",
+                        fontWeight: 400,
+                        letterSpacing: '0.02em',
                         opacity: lineOpacity,
                         y: lineY,
                         textShadow: '0 2px 20px rgba(0,0,0,0.9)'
@@ -138,10 +150,13 @@ Soy Alejandro Benítez. Fotógrafo con más de 12 años de experiencia, master e
                 })}
               </div>
 
-              {/* Información de contacto */}
+              {/* Información de contacto - También con Century Gothic */}
               <motion.p 
-                className="text-[#FFF500] text-xl md:text-2xl mt-12 font-medium"
+                className="text-[#FFF500] text-xl md:text-2xl mt-12 century-gothic"
                 style={{
+                  fontFamily: "'Century Gothic', CenturyGothic, sans-serif",
+                  fontWeight: 500,
+                  letterSpacing: '0.05em',
                   opacity: useTransform(scrollYProgress, [0.52, 0.57], [0, 1]),
                   y: useTransform(scrollYProgress, [0.52, 0.57], [20, 0]),
                   textShadow: '0 2px 20px rgba(0,0,0,0.9)'
