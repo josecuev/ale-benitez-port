@@ -1,0 +1,11 @@
+services:
+  reservas-web:
+    build: ./ab_reservas_project
+    container_name: ab-reservas-web
+    ports:
+      - "8000:8000"
+    environment:
+      - DJANGO_DEBUG=1
+    volumes:
+      - .:/app
+    command: poetry run python manage.py runserver 0.0.0.0:8000
