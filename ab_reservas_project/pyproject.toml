@@ -6,16 +6,22 @@ authors = [{ name = "josecuevas", email = "jmcuev89@gmail.com" }]
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-  "django (>=5.2.8,<6.0.0)"
+  "django (>=5.2.8,<6.0.0)",
+  "uvicorn (>=0.38.0,<0.39.0)",
+  "psycopg[binary] (>=3.2.12,<4.0.0)"
 ]
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
-# Opcional (Poetry autodetecta paquetes por __init__.py; puedes omitirlo)
 [tool.poetry]
-# Declara explícitamente qué directorios son paquetes (si querés ser estricto)
+# 👉 Duplicamos por compatibilidad con package mode
+name = "ab-reservas-project"
+version = "0.1.0"
+description = "Proyecto Django de reservas"
+authors = ["josecuevas <jmcuev89@gmail.com>"]
+
 packages = [
   { include = "ab_reservas_project" },
   { include = "app_reservas" }

@@ -1,11 +1,36 @@
 services:
-  reservas-web:
-    build: ./ab_reservas_project
+  reservas_web:
+    build:
+      context: ./ab_reservas_project
+      dockerfile: Dockerfile
     container_name: ab-reservas-web
+    environment:
+      DJANGO_DEBUG: "1"
+      DJANGO_SETTINGS_MODULE: ab_reservas_project.settings
+      POSTGRES_DB: ab_reservas
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+    volumes:
+      - ./ab_reservas_project:/app
     ports:
       - "8000:8000"
+    depends_on:
+      - db
+    command: poetry run uvicorn ab_reservas_project.asgi:application --host 0.0.0.0 --port 8000 --reload
+
+  db:
+    image: postgres:16-alpine
+    container_name: ab-reservas-db
     environment:
-      - DJANGO_DEBUG=1
+      POSTGRES_DB: ab_reservas
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     volumes:
-      - .:/app
-    command: poetry run python manage.py runserver 0.0.0.0:8000
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  pgdata:
