@@ -1,0 +1,603 @@
+<!doctype html>
+<html lang="es" class="light">
+<head>
+  <meta charset="utf-8">
+  <title>Reservar — Estudio Fotográfico</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Marca -->
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+
+  <style>
+    /* ===== Design tokens (KISS) ===== */
+    :root{
+      --radius: 10px;
+      --bg: #ffe927;                /* 💛 fondo amarillo */
+      --fg: #000;                   /* ✓ negro para toda la tipografía */
+      --card: #fff;
+      --muted: #f5f5f5;
+      --muted-fg: #000;             /* ✓ negro */
+      --primary: #000;              /* ✓ negro */
+      --primary-fg: #fff;
+      --accent: #f5f5f5;
+      --accent-fg: #000;            /* ✓ negro */
+      --border: #e5e5e5;
+      --ring: #000;
+      --ok:#16a34a; --warn:#f59e0b; --err:#ef4444;
+    }
+
+    /* ===== Base ===== */
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,"Helvetica Neue",sans-serif;background:var(--bg);color:var(--fg)}
+    .container{max-width:980px;margin:0 auto;padding:24px}
+    .title{font-family:"Bebas Neue",sans-serif;letter-spacing:1px;font-size:40px;margin:8px 0 6px;color:#000}
+    .subtitle{color:#000;margin:0 0 24px}
+
+    /* ===== UI ===== */
+    .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:16px}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+    .field{display:flex;flex-direction:column;gap:6px}
+    .label{font-size:13px;font-weight:600;color:#000}
+    .input,.select,.textarea{
+      border:1px solid var(--border);border-radius:var(--radius);
+      padding:10px 12px;font-size:15px;background:#fff;outline:none;
+      transition:border-color .15s, box-shadow .15s;color:#000;
+    }
+    .select{cursor:pointer}
+    .textarea{min-height:90px;resize:vertical}
+    .input:focus,.select:focus,.textarea:focus{border-color:var(--ring);box-shadow:0 0 0 4px rgba(0,0,0,0.1)}
+    .help{font-size:12px;color:#000;opacity:0.7}
+    .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
+    .btn{
+      border:1px solid var(--primary);background:var(--primary);color:var(--primary-fg);
+      border-radius:12px;padding:10px 14px;font-weight:600;cursor:pointer;transition:all .15s;
+    }
+    .btn:hover:not(:disabled){filter:brightness(1.2);transform:translateY(-1px)}
+    .btn.secondary{background:var(--accent);color:var(--accent-fg);border-color:var(--border)}
+    .btn.ghost{background:transparent;color:var(--primary);border-color:var(--primary)}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .btn.selected{background:#000;color:#fff;outline:3px solid #000;outline-offset:2px}
+
+    /* Steps */
+    .step{display:none}.step.active{display:block}
+
+    /* Autocomplete chips */
+    .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:var(--muted);font-size:13px;margin:4px 6px 0 0;color:#000}
+    .chip .x{cursor:pointer;font-weight:bold;color:#000}
+
+    /* Autocomplete list */
+    .ac-wrap{position:relative}
+    .ac-list{position:absolute;z-index:10;left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:var(--radius);margin-top:6px;max-height:240px;overflow:auto;display:none;box-shadow:0 4px 6px rgba(0,0,0,0.1)}
+    .ac-item{padding:10px 12px;cursor:pointer;display:flex;justify-content:space-between;gap:10px;color:#000}
+    .ac-item:hover{background:var(--accent)}
+
+    /* Slot selection */
+    .slot-section{margin-top:20px;padding:16px;background:#f9f9f9;border-radius:var(--radius)}
+    .slot-section-title{font-weight:600;margin-bottom:12px;color:#000;display:flex;align-items:center;gap:8px}
+    .slot-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:12px}
+    .slot-btn{
+      background:#fff;
+      border:2px solid var(--border);
+      border-radius:8px;
+      padding:12px;
+      cursor:pointer;
+      transition:all .2s;
+      text-align:center;
+      font-size:14px;
+      font-weight:500;
+      color:#000;
+    }
+    .slot-btn:hover{border-color:#000;transform:translateY(-2px);box-shadow:0 4px 8px rgba(0,0,0,0.1)}
+    .slot-btn.selected{background:#000;color:#fff;border-color:#000}
+    .slot-btn .time{font-size:16px;font-weight:600;margin-bottom:4px}
+    .slot-btn .duration{font-size:11px;opacity:0.7}
+
+    /* Continuo custom selector */
+    .continuo-selector{margin-top:12px;padding:16px;background:#fff;border:1px solid var(--border);border-radius:var(--radius)}
+    .continuo-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+    .continuo-info{font-size:13px;color:#000;opacity:0.8}
+    .time-selector{display:grid;grid-template-columns:1fr auto 1fr auto;gap:12px;align-items:end}
+    .time-selector .field{margin:0}
+
+    /* Status */
+    .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)}
+
+    @media (max-width:760px){ 
+      .row,.row-3{grid-template-columns:1fr} 
+      .actions{flex-direction:column;align-items:stretch}
+      .slot-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
+      .time-selector{grid-template-columns:1fr;gap:8px}
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="title">Reservá tu sesión</h1>
+    <p class="subtitle">Completá los datos paso a paso. Te mostraremos un resumen antes de enviar.</p>
+
+    <!-- ===== Paso 1: Datos personales ===== -->
+    <div class="card step active" id="step1">
+      <div class="row">
+        <div class="field">
+          <label class="label">Nombre completo *</label>
+          <input class="input" id="nombre" placeholder="Tu nombre y apellido" autocomplete="name">
+        </div>
+        <div class="field">
+          <label class="label">Email *</label>
+          <input class="input" id="email" placeholder="tucorreo@ejemplo.com" type="email" autocomplete="email">
+          <div class="help" id="help-email"></div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label class="label">Teléfono *</label>
+          <input class="input" id="telefono" placeholder="+595..." inputmode="tel" autocomplete="tel">
+        </div>
+        <div class="field">
+          <label class="label">Cédula *</label>
+          <input class="input" id="cedula" placeholder="Tu N° de CI" autocomplete="off">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label class="label">RUC (opcional)</label>
+          <input class="input" id="ruc" placeholder="Tu RUC (si aplica)" autocomplete="off">
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn" id="to-step2" disabled>Siguiente</button>
+      </div>
+    </div>
+
+    <!-- ===== Paso 2: Elegir fecha y horario ===== -->
+    <div class="card step" id="step2">
+      <div class="field">
+        <label class="label">Elegí el día *</label>
+        <input class="input" id="fecha" type="date">
+        <div class="help">Seleccioná una fecha para ver los horarios disponibles.</div>
+      </div>
+
+      <div id="slots" style="margin-top:12px;">
+        <!-- Render dinámico de disponibilidad -->
+      </div>
+
+      <div class="actions">
+        <button class="btn ghost" id="back-1">Atrás</button>
+        <button class="btn" id="to-step3" disabled>Siguiente</button>
+      </div>
+    </div>
+
+    <!-- ===== Paso 3: Servicios y notas ===== -->
+    <div class="card step" id="step3">
+      <div class="field">
+        <label class="label">Servicios adicionales</label>
+        <div class="ac-wrap">
+          <input class="input" id="ac-servicios" placeholder="Buscar y agregar...">
+          <div class="ac-list" id="ac-list"></div>
+        </div>
+        <div id="chips"></div>
+        <div class="help">Podés agregar cero o más servicios. Se actualizará el total en el resumen.</div>
+      </div>
+      <div class="field">
+        <label class="label">Comentarios (opcional)</label>
+        <textarea class="textarea" id="notas" placeholder="Contanos detalles, ideas o requisitos."></textarea>
+      </div>
+      <div class="actions">
+        <button class="btn ghost" id="back-2">Atrás</button>
+        <button class="btn" id="ver-resumen">Ver resumen</button>
+      </div>
+    </div>
+
+    <!-- ===== Paso 4: Resumen y envío ===== -->
+    <div class="card step" id="step4">
+      <h3 style="margin:0 0 12px;color:#000">Resumen de tu solicitud</h3>
+      <div id="resumen"></div>
+      <div class="actions">
+        <button class="btn ghost" id="back-3">Editar datos</button>
+        <button class="btn" id="confirmar">Confirmar y enviar</button>
+      </div>
+      <div id="post-result" style="margin-top:12px;"></div>
+    </div>
+  </div>
+
+  <!-- ===== Script ===== -->
+  <script>
+    // Flags del backend
+    const requiereVerificacion = {{ requiere_verificacion|yesno:"true,false" }};
+
+    // Helpers DOM
+    function $(id){ return document.getElementById(id); }
+    function showStep(n){
+      document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
+      $(`step${n}`).classList.add('active');
+      window.scrollTo({top:0,behavior:'smooth'});
+    }
+    function validEmail(v){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+
+    // CSRF
+    function getCookie(name){
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+    const csrftoken = getCookie('csrftoken');
+
+    // Estado global (MVP)
+    const state = {
+      nombre:"", email:"", telefono:"", cedula:"", ruc:"",
+      fecha:"", hora_inicio:"", hora_fin:"",
+      servicios:[], notas:""
+    };
+
+    // ===== Paso 1: validación =====
+    ["nombre","email","telefono","cedula","ruc"].forEach(id => $(id).addEventListener('input', validateStep1));
+    function validateStep1(){
+      state.nombre=$("nombre").value.trim();
+      state.email=$("email").value.trim();
+      state.telefono=$("telefono").value.trim();
+      state.cedula=$("cedula").value.trim();
+      state.ruc=$("ruc").value.trim();
+
+      const emailOk = validEmail(state.email);
+      $("help-email").textContent = emailOk || !state.email ? "" : "Formato de email inválido.";
+      $("help-email").style.color = "#ef4444";
+      $("to-step2").disabled = !(state.nombre && state.telefono && state.cedula && emailOk);
+    }
+    $("to-step2").addEventListener('click', () => showStep(2));
+
+    // ===== Paso 2: disponibilidad =====
+    const disponibilidadApiUrl = "{% url 'disponibilidad_api' %}";
+
+    // Hoy como mínimo
+    (function setMinFecha(){
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth()+1).padStart(2,'0');
+      const dd = String(today.getDate()).padStart(2,'0');
+      $("fecha").min = `${yyyy}-${mm}-${dd}`;
+    })();
+
+    $("fecha").addEventListener('change', cargarDisponibilidad);
+    $("back-1").addEventListener('click', () => showStep(1));
+    $("to-step3").addEventListener('click', () => showStep(3));
+
+    function mins(hhmm){ 
+      const [h,m]=hhmm.split(":").map(Number); 
+      return h*60+m; 
+    }
+
+    function formatDuration(inicio, fin){
+      const duracionMin = mins(fin) - mins(inicio);
+      const horas = Math.floor(duracionMin / 60);
+      const minutos = duracionMin % 60;
+      if(horas > 0 && minutos > 0) return `${horas}h ${minutos}min`;
+      if(horas > 0) return `${horas}h`;
+      return `${minutos}min`;
+    }
+
+    // Generar opciones de tiempo cada 15 minutos
+    function generarOpcionesTiempo(inicio, fin, step = 15){
+      const opciones = [];
+      const inicioMin = mins(inicio);
+      const finMin = mins(fin);
+      
+      for(let m = inicioMin; m <= finMin; m += step){
+        const h = Math.floor(m / 60);
+        const min = m % 60;
+        const tiempo = `${String(h).padStart(2,'0')}:${String(min).padStart(2,'0')}`;
+        opciones.push(tiempo);
+      }
+      return opciones;
+    }
+
+    async function cargarDisponibilidad(){
+      state.fecha = $("fecha").value || "";
+      state.hora_inicio = ""; 
+      state.hora_fin = "";
+      $("to-step3").disabled = true;
+      const cont = $("slots");
+
+      if (!state.fecha){ 
+        cont.innerHTML = ""; 
+        return; 
+      }
+
+      cont.innerHTML = `<div class="help">Buscando disponibilidad...</div>`;
+      try{
+        const r = await fetch(`${disponibilidadApiUrl}?fecha=${encodeURIComponent(state.fecha)}`);
+        const data = await r.json();
+        if (!data.ok) throw new Error(data.error || "No se pudo obtener disponibilidad.");
+
+        // Render
+        cont.innerHTML = "";
+
+        // DISCRETOS - Slots predefinidos
+        if (data.discreto && data.discreto.length){
+          const section = document.createElement('div');
+          section.className = 'slot-section';
+          section.innerHTML = `
+            <div class="slot-section-title">
+              <span>📦</span>
+              <span>Horarios disponibles (slots fijos)</span>
+            </div>
+            <div class="help">Seleccioná uno de los horarios disponibles:</div>
+            <div class="slot-grid" id="discreto-grid"></div>
+          `;
+          cont.appendChild(section);
+
+          const grid = section.querySelector('#discreto-grid');
+          data.discreto.forEach(s => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'slot-btn';
+            btn.innerHTML = `
+              <div class="time">${s.inicio} — ${s.fin}</div>
+              <div class="duration">${formatDuration(s.inicio, s.fin)}</div>
+            `;
+            btn.addEventListener('click', () => {
+              state.hora_inicio = s.inicio;
+              state.hora_fin = s.fin;
+              // Limpiar selecciones
+              document.querySelectorAll('.slot-btn').forEach(x => x.classList.remove('selected'));
+              btn.classList.add('selected');
+              validateStep2();
+            });
+            grid.appendChild(btn);
+          });
+        }
+
+        // CONTINUOS - Rangos flexibles
+        if (data.continuo && data.continuo.length){
+          data.continuo.forEach((rango, idx) => {
+            const section = document.createElement('div');
+            section.className = 'slot-section';
+            section.style.marginTop = '20px';
+            
+            const opcionesInicio = generarOpcionesTiempo(rango.inicio, rango.fin);
+            const opcionesFin = generarOpcionesTiempo(rango.inicio, rango.fin);
+
+            section.innerHTML = `
+              <div class="slot-section-title">
+                <span>🔄</span>
+                <span>Horario flexible: ${rango.inicio} — ${rango.fin}</span>
+              </div>
+              <div class="continuo-selector">
+                <div class="continuo-info">
+                  Elegí tu horario dentro del rango disponible (mínimo ${rango.min} minutos)
+                </div>
+                <div class="time-selector">
+                  <div class="field">
+                    <label class="label">Hora de inicio</label>
+                    <select class="select inicio-select" data-idx="${idx}">
+                      ${opcionesInicio.map(t => `<option value="${t}">${t}</option>`).join('')}
+                    </select>
+                  </div>
+                  <div style="padding-top:28px;font-weight:bold;color:#000">—</div>
+                  <div class="field">
+                    <label class="label">Hora de fin</label>
+                    <select class="select fin-select" data-idx="${idx}">
+                      ${opcionesFin.map(t => `<option value="${t}">${t}</option>`).join('')}
+                    </select>
+                  </div>
+                  <button class="btn confirmar-continuo" data-idx="${idx}" type="button">Usar este horario</button>
+                </div>
+                <div class="help" style="margin-top:8px" id="continuo-feedback-${idx}"></div>
+              </div>
+            `;
+            cont.appendChild(section);
+
+            // Validación en tiempo real
+            const selectInicio = section.querySelector('.inicio-select');
+            const selectFin = section.querySelector('.fin-select');
+            const feedback = section.querySelector(`#continuo-feedback-${idx}`);
+            const btnConfirmar = section.querySelector('.confirmar-continuo');
+
+            function validarContinuo(){
+              const ti = selectInicio.value;
+              const tf = selectFin.value;
+              const duracion = mins(tf) - mins(ti);
+              
+              if(duracion < rango.min){
+                feedback.textContent = `⚠️ La duración debe ser al menos ${rango.min} minutos (actual: ${duracion} min)`;
+                feedback.style.color = '#f59e0b';
+                btnConfirmar.disabled = true;
+                return false;
+              } else if(duracion < 0){
+                feedback.textContent = '⚠️ La hora de fin debe ser posterior a la de inicio';
+                feedback.style.color = '#ef4444';
+                btnConfirmar.disabled = true;
+                return false;
+              } else {
+                feedback.textContent = `✓ Duración: ${formatDuration(ti, tf)}`;
+                feedback.style.color = '#16a34a';
+                btnConfirmar.disabled = false;
+                return true;
+              }
+            }
+
+            selectInicio.addEventListener('change', validarContinuo);
+            selectFin.addEventListener('change', validarContinuo);
+
+            // Setear valor final por defecto
+            selectFin.value = rango.fin;
+            validarContinuo();
+
+            btnConfirmar.addEventListener('click', () => {
+              if(!validarContinuo()) return;
+              
+              state.hora_inicio = selectInicio.value;
+              state.hora_fin = selectFin.value;
+              
+              // Limpiar otras selecciones
+              document.querySelectorAll('.slot-btn').forEach(x => x.classList.remove('selected'));
+              document.querySelectorAll('.confirmar-continuo').forEach(x => {
+                x.classList.remove('selected');
+                x.textContent = 'Usar este horario';
+              });
+              
+              btnConfirmar.classList.add('selected');
+              btnConfirmar.textContent = '✓ Horario seleccionado';
+              validateStep2();
+            });
+          });
+        }
+
+        if ((!data.discreto || !data.discreto.length) && (!data.continuo || !data.continuo.length)){
+          cont.innerHTML = `<div class="help">❌ No hay horarios disponibles para ese día. Probá con otra fecha.</div>`;
+        }
+      }catch(e){
+        cont.innerHTML = `<div class="err">✗ ${e.message}</div>`;
+      }
+    }
+
+    function validateStep2(){
+      const ok = !!(state.fecha && state.hora_inicio && state.hora_fin && state.hora_inicio < state.hora_fin);
+      $("to-step3").disabled = !ok;
+    }
+
+    // ===== Paso 3: servicios (autocomplete simple) =====
+    const acInput = $("ac-servicios");
+    const acList = $("ac-list");
+    const chips = $("chips");
+    const serviciosApiUrl = "{% url 'servicios_api' %}";
+    let acTimer = null;
+
+    acInput.addEventListener('input', () => {
+      const q = acInput.value.trim();
+      clearTimeout(acTimer);
+      if (!q){ acList.style.display='none'; return; }
+      acTimer = setTimeout(async () => {
+        try{
+          const resp = await fetch(`${serviciosApiUrl}?q=${encodeURIComponent(q)}`);
+          const data = await resp.json();
+          renderAC(data.results || []);
+        }catch{ acList.style.display='none'; }
+      }, 180);
+    });
+
+    function renderAC(items){
+      acList.innerHTML = "";
+      items.forEach(it => {
+        const div = document.createElement('div');
+        div.className = 'ac-item';
+        div.innerHTML = `<span>${it.nombre}</span><span>Gs. ${Number(it.precio||0).toLocaleString()}</span>`;
+        div.addEventListener('click', () => addServicio(it));
+        acList.appendChild(div);
+      });
+      acList.style.display = items.length ? 'block' : 'none';
+    }
+
+    function addServicio(it){
+      if (state.servicios.some(s => s.id === it.id)){ 
+        acList.style.display='none'; 
+        acInput.value=''; 
+        return; 
+      }
+      state.servicios.push({id:it.id,nombre:it.nombre,precio:it.precio});
+      acInput.value=''; 
+      acList.style.display='none';
+      renderChips();
+    }
+
+    function removeServicio(id){
+      state.servicios = state.servicios.filter(s => s.id !== id);
+      renderChips();
+    }
+
+    function renderChips(){
+      chips.innerHTML = "";
+      state.servicios.forEach(s => {
+        const c = document.createElement('span');
+        c.className = 'chip';
+        c.innerHTML = `<span>${s.nombre} — Gs. ${Number(s.precio||0).toLocaleString()}</span><span class="x" title="Quitar">×</span>`;
+        c.querySelector('.x').addEventListener('click', () => removeServicio(s.id));
+        chips.appendChild(c);
+      });
+    }
+
+    $("back-2").addEventListener('click', () => showStep(2));
+    $("ver-resumen").addEventListener('click', () => {
+      state.notas = $("notas").value.trim();
+      renderResumen();
+      showStep(4);
+    });
+
+    // ===== Paso 4: resumen + POST =====
+    function renderResumen(){
+      const total = state.servicios.reduce((a,b)=>a+(Number(b.precio)||0),0);
+      const serviciosHtml = state.servicios.length
+        ? `<ul style="margin:8px 0;padding-left:20px">${state.servicios.map(s=>`<li style="color:#000">${s.nombre} — Gs. ${Number(s.precio||0).toLocaleString()}</li>`).join("")}</ul>`
+        : `<div class="help">Sin servicios adicionales.</div>`;
+      $("resumen").innerHTML = `
+        <div class="row">
+          <div class="field">
+            <div class="label">Cliente</div>
+            <div style="color:#000"><strong>${state.nombre}</strong><br>${state.email} · ${state.telefono}</div>
+          </div>
+          <div class="field">
+            <div class="label">Identificación</div>
+            <div style="color:#000">CI: ${state.cedula}${state.ruc ? " · RUC: "+state.ruc : ""}</div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <div class="label">Fecha</div>
+            <div style="color:#000">${state.fecha}</div>
+          </div>
+          <div class="field">
+            <div class="label">Horario</div>
+            <div style="color:#000">${state.hora_inicio} — ${state.hora_fin} <span class="help">(${formatDuration(state.hora_inicio, state.hora_fin)})</span></div>
+          </div>
+        </div>
+        <div class="field">
+          <div class="label">Servicios adicionales</div>
+          ${serviciosHtml}
+          <div style="margin-top:6px;color:#000"><strong>Total extras:</strong> Gs. ${total.toLocaleString()}</div>
+        </div>
+        ${state.notas ? `<div class="field"><div class="label">Comentarios</div><div style="color:#000">${state.notas}</div></div>` : ""}`;
+    }
+
+    $("back-3").addEventListener('click', () => showStep(3));
+    $("confirmar").addEventListener('click', enviarReserva);
+
+    async function enviarReserva(){
+      $("confirmar").disabled = true;
+      $("post-result").innerHTML = `<div class="help">Enviando...</div>`;
+      const payload = {
+        nombre_cliente: state.nombre,
+        email_cliente: state.email,
+        telefono_cliente: state.telefono,
+        cedula: state.cedula,
+        ruc: state.ruc,
+        fecha: state.fecha,
+        hora_inicio: state.hora_inicio,
+        hora_fin: state.hora_fin,
+        servicios_ids: state.servicios.map(s=>s.id),
+        notas_cliente: state.notas
+      };
+      try{
+        const resp = await fetch("", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken || "" },
+          body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        if(!data.ok) throw new Error(data.error || "No se pudo procesar la reserva.");
+
+        const next = data.siguiente, resumen = data.resumen;
+        if(next === "verificar_email"){
+          $("post-result").innerHTML = `<div class="ok">✓ Recibimos tu solicitud.</div><div style="color:#000">Te enviamos un correo para verificar tu email.</div><div class="help" style="margin-top:6px;color:#000">Código: <strong>${resumen.codigo.slice(0,8)}</strong></div>`;
+        }else if(next === "verificar_email_pendiente"){
+          $("post-result").innerHTML = `<div class="warn">Reserva creada, pero no pudimos enviar el email ahora.</div><div style="color:#000">Intentá más tarde o escribinos.</div><div class="help" style="margin-top:6px;color:#000">Código: <strong>${resumen.codigo.slice(0,8)}</strong></div>`;
+        }else{
+          $("post-result").innerHTML = `<div class="ok">✓ Recibimos tu solicitud.</div><div style="color:#000">Un asistente te contactará para confirmar.</div><div class="help" style="margin-top:6px;color:#000">Código: <strong>${resumen.codigo.slice(0,8)}</strong></div>`;
+        }
+      }catch(e){
+        $("post-result").innerHTML = `<div class="err">✗ ${e.message}</div>`;
+        $("confirmar").disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>

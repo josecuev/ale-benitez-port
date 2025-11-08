@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Verificación de Reserva — Estudio Fotográfico</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+  <style>
+    body{
+      font-family:system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,"Helvetica Neue",sans-serif;
+      margin:0;
+      padding:2rem;
+      background:#ffe927; /* 💛 mismo fondo amarillo */
+      color:#000;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-height:100vh;
+    }
+    .card{
+      max-width:640px;
+      background:#fff;
+      border:1px solid #e5e5e5;
+      border-radius:12px;
+      padding:2rem;
+      box-shadow:0 4px 6px rgba(0,0,0,0.1);
+    }
+    h1{
+      font-family:"Bebas Neue",sans-serif;
+      letter-spacing:1px;
+      font-size:32px;
+      margin:0 0 16px;
+      color:#000;
+    }
+    h1.ok{color:#16a34a}
+    h1.warn{color:#f59e0b}
+    h1.err{color:#ef4444}
+    p{color:#000;line-height:1.6}
+    hr{border:0;border-top:1px solid #e5e5e5;margin:1.5rem 0}
+    .muted{color:#000;opacity:0.7;font-size:14px}
+    .mono{
+      font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      background:#f5f5f5;
+      padding:2px 6px;
+      border-radius:4px;
+      color:#000;
+    }
+    ul{padding-left:20px;color:#000}
+    li{margin:8px 0;color:#000}
+    strong{color:#000}
+    .icon{font-size:48px;margin-bottom:16px;display:block}
+  </style>
+</head>
+<body>
+  <div class="card">
+    {% if estado == "ok" %}
+      <span class="icon">✅</span>
+      <h1 class="ok">Email verificado correctamente</h1>
+      <p>Tu solicitud de reserva quedó <strong>pendiente de confirmación</strong> por parte del asistente.</p>
+      <p>Te contactaremos pronto al número de teléfono que proporcionaste para coordinar el pago y confirmar tu sesión.</p>
+    {% elif estado == "ya_verificada" %}
+      <span class="icon">ℹ️</span>
+      <h1 class="warn">Email ya verificado</h1>
+      <p>Esta solicitud ya no requiere verificación o ya fue procesada anteriormente.</p>
+      <p>Si tenés dudas sobre el estado de tu reserva, contactanos con el código que te proporcionamos.</p>
+    {% elif estado == "no_requerida" %}
+      <span class="icon">ℹ️</span>
+      <h1 class="warn">Verificación no requerida</h1>
+      <p>Según la configuración actual del sistema, no se requiere verificación de email para las reservas.</p>
+      <p>Tu solicitud ya fue registrada correctamente.</p>
+    {% else %}
+      <span class="icon">❌</span>
+      <h1 class="err">No se pudo verificar</h1>
+      <p>Ocurrió un problema al intentar verificar tu email. Por favor, intentá más tarde o contactanos directamente.</p>
+    {% endif %}
+
+    <hr>
+
+    <p class="muted">Detalle de tu reserva:</p>
+    <ul>
+      <li><strong>Código:</strong> <span class="mono">{{ reserva.codigo }}</span></li>
+      <li><strong>Cliente:</strong> {{ reserva.nombre_cliente }}</li>
+      <li><strong>Email:</strong> {{ reserva.email_cliente }}</li>
+      <li><strong>Teléfono:</strong> {{ reserva.telefono_cliente }}</li>
+      <li><strong>Fecha:</strong> {{ reserva.fecha|date:"d/m/Y" }} ({{ reserva.get_dia_semana_display }})</li>
+      <li><strong>Horario:</strong> {{ reserva.hora_inicio|time:"H:i" }} — {{ reserva.hora_fin|time:"H:i" }}</li>
+      <li><strong>Estado actual:</strong> {{ reserva.get_estado_display }}</li>
+    </ul>
+
+    {% if reserva.servicios_adicionales.exists %}
+      <hr>
+      <p class="muted">Servicios adicionales contratados:</p>
+      <ul>
+        {% for servicio in reserva.servicios_adicionales.all %}
+          <li>{{ servicio.nombre }} — Gs. {{ servicio.precio|floatformat:0 }}</li>
+        {% endfor %}
+      </ul>
+      <p><strong>Total servicios:</strong> Gs. {{ reserva.total|floatformat:0 }}</p>
+    {% endif %}
+  </div>
+</body>
+</html>

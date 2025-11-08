@@ -18,7 +18,9 @@ services:
       - "8000:8000"
     depends_on:
       - db
-    command: poetry run uvicorn ab_reservas_project.asgi:application --host 0.0.0.0 --port 8000 --reload
+    # command: poetry run uvicorn ab_reservas_project.asgi:application --host 0.0.0.0 --port 8000 --reload
+    command: poetry run python manage.py runserver 0.0.0.0:8000
+
 
   db:
     image: postgres:16-alpine
