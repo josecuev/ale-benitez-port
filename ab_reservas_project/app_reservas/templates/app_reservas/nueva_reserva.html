@@ -220,8 +220,17 @@
       const value = `; ${document.cookie}`;
       const parts = value.split(`; ${name}=`);
       if (parts.length === 2) return parts.pop().split(';').shift();
+      return null;
     }
     const csrftoken = getCookie('csrftoken');
+
+    // Debug: verificar que el token existe
+    if (!csrftoken) {
+      console.error('⚠️ No se encontró el token CSRF en las cookies');
+      console.log('Cookies disponibles:', document.cookie);
+    } else {
+      console.log('✓ Token CSRF obtenido correctamente');
+    }
 
     // Estado global (MVP)
     const state = {
@@ -564,6 +573,14 @@
     async function enviarReserva(){
       $("confirmar").disabled = true;
       $("post-result").innerHTML = `<div class="help">Enviando...</div>`;
+
+      // Verificar que tenemos el token CSRF
+      if (!csrftoken) {
+        $("post-result").innerHTML = `<div class="err">✗ Error de seguridad: no se pudo obtener el token CSRF. Por favor, recargá la página.</div>`;
+        $("confirmar").disabled = false;
+        return;
+      }
+
       const payload = {
         nombre_cliente: state.nombre,
         email_cliente: state.email,
@@ -579,7 +596,10 @@
       try{
         const resp = await fetch("", {
           method: "POST",
-          headers: { "Content-Type": "application/json", "X-CSRFToken": csrftoken || "" },
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrftoken
+          },
           body: JSON.stringify(payload)
         });
         const data = await resp.json();
