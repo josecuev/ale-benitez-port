@@ -262,6 +262,13 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
+        .time-slot.available.selected {
+            background-color: #ffe927;
+            border-color: #ffd700;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(255, 233, 39, 0.3);
+        }
+
         .time-slot.occupied {
             border-color: #ccc;
             background-color: #f0f0f0;
@@ -270,16 +277,11 @@
         }
 
         .time-slot input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-            margin-right: 12px;
-            cursor: pointer;
-            accent-color: #ffe927;
+            display: none;
         }
 
         .time-slot.occupied input[type="checkbox"] {
-            cursor: not-allowed;
-            opacity: 0.5;
+            display: none;
         }
 
         .time-slot-content {
@@ -385,6 +387,144 @@
             transform: scale(0.98);
         }
 
+        /* Confirmation Modal */
+        .confirm-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .confirm-overlay.visible {
+            display: flex;
+        }
+
+        .confirm-modal {
+            background: #fff;
+            border-radius: 12px;
+            padding: 32px 24px 24px;
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: modalIn 0.3s ease-out;
+        }
+
+        @keyframes modalIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9) translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .confirm-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .confirm-title {
+            font-family: 'Bebas Neue', 'Arial Black', sans-serif;
+            font-size: 28px;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .confirm-subtitle {
+            font-size: 14px;
+            color: #555;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        .confirm-code-box {
+            background: #ffe927;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .confirm-code-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #555;
+            margin-bottom: 6px;
+        }
+
+        .confirm-code {
+            font-family: 'Bebas Neue', 'Arial Black', monospace;
+            font-size: 48px;
+            letter-spacing: 8px;
+            color: #000;
+            font-weight: bold;
+        }
+
+        .confirm-hint {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        .confirm-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .confirm-btn {
+            display: block;
+            padding: 13px 20px;
+            border-radius: 6px;
+            font-family: 'Bebas Neue', 'Arial Black', sans-serif;
+            font-size: 16px;
+            letter-spacing: 1px;
+            text-decoration: none;
+            text-align: center;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            border: none;
+        }
+
+        .confirm-btn:hover {
+            opacity: 0.85;
+        }
+
+        .confirm-btn-whatsapp {
+            background: #000;
+            color: #ffe927;
+        }
+
+        .confirm-btn-call {
+            background: #f0f0f0;
+            color: #333;
+            border: 2px solid #ddd;
+        }
+
+        .confirm-close {
+            background: none;
+            border: none;
+            font-size: 13px;
+            color: #aaa;
+            cursor: pointer;
+            text-decoration: underline;
+            padding: 4px;
+            width: 100%;
+        }
+
+        .confirm-close:hover {
+            color: #555;
+        }
+
         @media (max-width: 480px) {
             .header h1 {
                 font-size: 24px;
@@ -465,6 +605,37 @@
             <button class="reserve-btn" id="reserveBtn" disabled>
                 Reservar
             </button>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div class="confirm-overlay" id="confirmOverlay">
+        <div class="confirm-modal">
+            <div class="confirm-icon">✅</div>
+            <h2 class="confirm-title">¡Pre-reserva creada!</h2>
+            <p class="confirm-subtitle">
+                Tu solicitud fue registrada. Para confirmar la reserva, comunicate con nosotros.
+            </p>
+
+            <div class="confirm-code-box">
+                <div class="confirm-code-label">Tu código de reserva</div>
+                <div class="confirm-code" id="confirmCode">----</div>
+            </div>
+
+            <p class="confirm-hint">
+                Mencioná este código al escribir o llamar para que podamos identificar tu reserva rápidamente.
+            </p>
+
+            <div class="confirm-actions">
+                <a class="confirm-btn confirm-btn-whatsapp" id="confirmWhatsappBtn" href="#" target="_blank">
+                    Enviar mensaje por WhatsApp
+                </a>
+                <a class="confirm-btn confirm-btn-call" id="confirmCallBtn" href="#">
+                    Llamar
+                </a>
+            </div>
+
+            <button class="confirm-close" id="confirmClose">Cerrar</button>
         </div>
     </div>
 
@@ -689,10 +860,17 @@
 
                 if (slot.available) {
                     const checkbox = slotDiv.querySelector('input[type="checkbox"]');
-                    checkbox.addEventListener('change', () => {
+
+                    // Make entire slot clickable
+                    slotDiv.addEventListener('click', () => {
+                        checkbox.checked = !checkbox.checked;
+
+                        // Update visual state
                         if (checkbox.checked) {
+                            slotDiv.classList.add('selected');
                             selectedSlots.add(slot.time);
                         } else {
+                            slotDiv.classList.remove('selected');
                             selectedSlots.delete(slot.time);
                         }
                         updateSelectionCount();
@@ -783,24 +961,52 @@
                 // Build WhatsApp message
                 const message = `Hola! Quiero reservar ${resourceName} el ${dayName} ${dayNum} de ${month} de ${startTime} a ${endTime}. Mi código de reserva es: ${code}`;
 
-                // Open WhatsApp
+                // Show confirmation modal with code
                 const whatsappNumber = document.querySelector('[data-whatsapp]')?.getAttribute('data-whatsapp') || '';
-                if (whatsappNumber) {
-                    const whatsappURL = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
-                    window.open(whatsappURL, '_blank');
-                }
-
-                // Reset
-                selectedSlots.clear();
-                updateSelectionCount();
+                showConfirmModal(code, message, whatsappNumber);
 
             } catch (error) {
                 console.error('Error:', error);
                 alert(`Error: ${error.message}`);
-            } finally {
                 reserveBtn.disabled = false;
                 reserveBtn.textContent = 'Reservar';
             }
+        }
+
+        // Show confirmation modal
+        function showConfirmModal(code, message, whatsappNumber) {
+            document.getElementById('confirmCode').textContent = code;
+
+            // Set WhatsApp button
+            if (whatsappNumber) {
+                const whatsappURL = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+                document.getElementById('confirmWhatsappBtn').href = whatsappURL;
+            }
+
+            // Set Call button
+            if (whatsappNumber) {
+                document.getElementById('confirmCallBtn').href = `tel:${whatsappNumber}`;
+            }
+
+            // Show modal
+            document.getElementById('confirmOverlay').classList.add('visible');
+        }
+
+        // Close confirmation modal and clean up
+        function closeConfirmModal() {
+            document.getElementById('confirmOverlay').classList.remove('visible');
+
+            // Reset button state
+            const reserveBtn = document.getElementById('reserveBtn');
+            reserveBtn.disabled = false;
+            reserveBtn.textContent = 'Reservar';
+
+            // Clean up slot selection
+            selectedSlots.clear();
+            document.querySelectorAll('.time-slot.selected').forEach(el => el.classList.remove('selected'));
+            document.querySelectorAll('.time-slot input[type="checkbox"]').forEach(cb => cb.checked = false);
+            updateSelectionCount();
+            hideValidationError();
         }
 
         // Update header
@@ -834,6 +1040,25 @@
 
         // Event listener for reserve button
         document.getElementById('reserveBtn').addEventListener('click', handleReservation);
+
+        // Event listeners for confirmation modal
+        document.getElementById('confirmClose').addEventListener('click', closeConfirmModal);
+
+        // Close modal when clicking outside the modal box
+        document.getElementById('confirmOverlay').addEventListener('click', (e) => {
+            if (e.target.id === 'confirmOverlay') {
+                closeConfirmModal();
+            }
+        });
+
+        // Close modal after clicking WhatsApp or Call button
+        document.getElementById('confirmWhatsappBtn').addEventListener('click', () => {
+            setTimeout(closeConfirmModal, 500);
+        });
+
+        document.getElementById('confirmCallBtn').addEventListener('click', () => {
+            setTimeout(closeConfirmModal, 500);
+        });
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
