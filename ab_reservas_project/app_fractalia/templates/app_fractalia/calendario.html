@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fractalia - Calendario de disponibilidad</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .header {
+            background-color: #ffe927;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 3px solid #000;
+        }
+
+        .header h1 {
+            font-family: 'Bebas Neue', 'Arial Black', sans-serif;
+            font-size: 32px;
+            letter-spacing: 2px;
+            margin-bottom: 4px;
+            color: #000;
+        }
+
+        .header p {
+            font-size: 12px;
+            color: #333;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .main-container {
+            max-width: 100%;
+            height: calc(100vh - 120px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Days scroll bar */
+        .days-container {
+            background-color: #fff;
+            border-bottom: 2px solid #ffe927;
+            padding: 12px 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            flex-shrink: 0;
+        }
+
+        .days-list {
+            display: flex;
+            gap: 8px;
+            padding: 0 12px;
+            min-width: min-content;
+        }
+
+        .day-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-width: 60px;
+            padding: 10px 8px;
+            background-color: #f0f0f0;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .day-btn:hover {
+            border-color: #ffe927;
+            background-color: #faf5e4;
+        }
+
+        .day-btn.active {
+            background-color: #ffe927;
+            border-color: #ffe927;
+            font-weight: bold;
+        }
+
+        .day-btn-date {
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .day-btn-name {
+            font-size: 10px;
+        }
+
+        /* Slots container */
+        .slots-container {
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 20px;
+            background-color: #fff;
+        }
+
+        .slots-header {
+            margin-bottom: 20px;
+        }
+
+        .slots-header h2 {
+            font-family: 'Bebas Neue', 'Arial Black', sans-serif;
+            font-size: 18px;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        .slots-header p {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .slots-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .time-slot {
+            padding: 14px 16px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            background-color: #f9f9f9;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .time-slot.available {
+            border-color: #ffe927;
+            background-color: #fffbf0;
+        }
+
+        .time-slot.available:hover {
+            background-color: #ffe927;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .time-slot.available:active {
+            transform: scale(0.98);
+        }
+
+        .time-slot.occupied {
+            border-color: #ccc;
+            background-color: #f0f0f0;
+            color: #999;
+            cursor: not-allowed;
+        }
+
+        .time-slot-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .time-slot-time {
+            font-family: 'Bebas Neue', 'Arial Black', sans-serif;
+            font-size: 20px;
+            letter-spacing: 1px;
+            font-weight: 400;
+        }
+
+        .time-slot-status {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 4px 8px;
+            border-radius: 3px;
+        }
+
+        .time-slot-status.available {
+            background-color: #ffe927;
+            color: #000;
+            font-weight: bold;
+        }
+
+        .time-slot-status.occupied {
+            background-color: #ddd;
+            color: #666;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .empty-state-text {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .error-state {
+            background-color: #ffe4e4;
+            border: 2px solid #ff6b6b;
+            border-radius: 6px;
+            padding: 16px;
+            margin: 20px;
+            color: #cc0000;
+        }
+
+        .footer {
+            background-color: #f5f5f5;
+            padding: 12px 20px;
+            border-top: 2px solid #ffe927;
+            font-size: 12px;
+            color: #999;
+            text-align: center;
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .day-btn {
+                min-width: 55px;
+                padding: 8px 6px;
+            }
+
+            .slots-header h2 {
+                font-size: 16px;
+            }
+
+            .time-slot {
+                padding: 12px 14px;
+            }
+
+            .time-slot-time {
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>FRACTALIA</h1>
+        <p>Calendario de disponibilidad</p>
+    </div>
+
+    <div class="main-container">
+        <!-- Days scroll bar -->
+        <div class="days-container">
+            <div class="days-list" id="daysList">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+
+        <!-- Slots section -->
+        <div class="slots-container">
+            <div class="slots-header">
+                <h2 id="selectedDayName">Selecciona un día</h2>
+                <p id="selectedDayText">Haz clic en un día para ver horarios disponibles</p>
+            </div>
+            <div class="slots-list" id="slotsList">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Toca un horario disponible para contactar vía WhatsApp</p>
+    </div>
+
+    <script>
+        const DAYS_IN_ADVANCE = 30;
+        const API_ENDPOINT = '{% url "fractalia_disponibilidad_api" %}';
+        const RESOURCE_ID = {{ resources.first.id|default:'null' }};
+
+        let selectedDate = null;
+
+        // Generate day buttons for next 30 days
+        function generateDayButtons() {
+            const daysList = document.getElementById('daysList');
+            const today = new Date();
+
+            for (let i = 0; i < DAYS_IN_ADVANCE; i++) {
+                const date = new Date(today);
+                date.setDate(date.getDate() + i);
+
+                const dateStr = date.toISOString().split('T')[0];
+                const dayName = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][date.getDay()];
+                const dayNum = date.getDate();
+
+                const btn = document.createElement('button');
+                btn.className = 'day-btn';
+                if (i === 0) btn.classList.add('active');
+                btn.innerHTML = `
+                    <div class="day-btn-date">${dayNum}</div>
+                    <div class="day-btn-name">${dayName}</div>
+                `;
+                btn.onclick = () => selectDay(dateStr, btn);
+
+                daysList.appendChild(btn);
+
+                // Select today by default
+                if (i === 0) {
+                    selectedDate = dateStr;
+                    loadSlots(dateStr);
+                }
+            }
+        }
+
+        // Select a day and load slots
+        function selectDay(dateStr, btn) {
+            // Update active button
+            document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            selectedDate = dateStr;
+            loadSlots(dateStr);
+
+            // Scroll button into view
+            btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+
+        // Load available slots from API
+        function loadSlots(dateStr) {
+            if (!RESOURCE_ID) {
+                showEmptyState('No hay recursos disponibles');
+                return;
+            }
+
+            const slotsList = document.getElementById('slotsList');
+            slotsList.innerHTML = '<div class="loading">Cargando horarios...</div>';
+
+            fetch(`${API_ENDPOINT}?fecha=${dateStr}&resource_id=${RESOURCE_ID}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        showError(data.error);
+                    } else {
+                        renderSlots(data);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showError('Error al cargar los horarios');
+                });
+
+            // Update header
+            const date = new Date(dateStr + 'T00:00:00');
+            const dayName = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][date.getDay()];
+            const dayNum = date.getDate();
+            const month = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                           'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'][date.getMonth()];
+
+            document.getElementById('selectedDayName').textContent = `${dayName} ${dayNum} de ${month}`;
+            document.getElementById('selectedDayText').textContent = 'Horarios disponibles';
+        }
+
+        // Render available slots
+        function renderSlots(data) {
+            const slotsList = document.getElementById('slotsList');
+
+            if (!data.slots || data.slots.length === 0) {
+                slotsList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📅</div>
+                        <div class="empty-state-text">No hay horarios disponibles en esta fecha</div>
+                    </div>
+                `;
+                return;
+            }
+
+            slotsList.innerHTML = '';
+
+            data.slots.forEach(slot => {
+                const slotDiv = document.createElement('div');
+                slotDiv.className = `time-slot ${slot.available ? 'available' : 'occupied'}`;
+
+                const status = slot.available ? 'Disponible' : 'Ocupado';
+
+                slotDiv.innerHTML = `
+                    <div class="time-slot-content">
+                        <div class="time-slot-time">${slot.time}</div>
+                        <div class="time-slot-status ${slot.available ? 'available' : 'occupied'}">${status}</div>
+                    </div>
+                `;
+
+                if (slot.available) {
+                    slotDiv.onclick = () => openWhatsApp(data, slot);
+                }
+
+                slotsList.appendChild(slotDiv);
+            });
+        }
+
+        // Open WhatsApp
+        function openWhatsApp(data, slot) {
+            const resource = data.resource_name;
+            const date = new Date(data.fecha + 'T00:00:00');
+            const dayName = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][date.getDay()];
+            const dayNum = date.getDate();
+            const month = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                           'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'][date.getMonth()];
+
+            const nextHour = parseInt(slot.time.split(':')[0]) + 1;
+            const endTime = `${nextHour.toString().padStart(2, '0')}:00`;
+
+            const message = `Hola! Quiero reservar ${resource} el ${dayName} ${dayNum} de ${month} de ${slot.time} a ${endTime}.`;
+            const whatsappNumber = document.querySelector('[data-whatsapp]')?.getAttribute('data-whatsapp') || '';
+
+            if (!whatsappNumber) {
+                showError('Número de WhatsApp no configurado');
+                return;
+            }
+
+            const whatsappURL = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+            window.open(whatsappURL, '_blank');
+        }
+
+        // Show empty state
+        function showEmptyState(message) {
+            document.getElementById('slotsList').innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">🚫</div>
+                    <div class="empty-state-text">${message}</div>
+                </div>
+            `;
+        }
+
+        // Show error
+        function showError(message) {
+            document.getElementById('slotsList').innerHTML = `
+                <div class="error-state">${message}</div>
+            `;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', generateDayButtons);
+    </script>
+
+    {% if resources.first %}
+        <div data-whatsapp="{{ resources.first.whatsapp_number }}" style="display:none;"></div>
+    {% endif %}
+</body>
+</html>

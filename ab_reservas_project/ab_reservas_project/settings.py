@@ -40,9 +40,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
+
     # APPS DE ESTE REPO
-    
+
+    'app_links',
+    'app_fractalia',
     'app_reservas',
 ]
 

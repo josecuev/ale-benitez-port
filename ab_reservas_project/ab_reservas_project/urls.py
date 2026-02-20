@@ -6,9 +6,10 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
+    path("", include("app_links.urls")),
+    path("fractalia/", include("app_fractalia.urls")),
     path("reservas/", include("app_reservas.urls")),
     path("admin/", admin.site.urls),
-    path("", RedirectView.as_view(url="/reservas/nueva/", permanent=False)),
 ]
 
 if settings.DEBUG:
