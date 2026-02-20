@@ -105,8 +105,9 @@ class Booking(models.Model):
                         f'({availability.start_time} - {availability.end_time}).'
                     )
             else:
+                day_name = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'][weekday]
                 raise ValidationError(
-                    f'No hay horario disponible definido para {self.get_weekday_display()}.'
+                    f'No hay horario disponible definido para {day_name}.'
                 )
 
     def save(self, *args, **kwargs):

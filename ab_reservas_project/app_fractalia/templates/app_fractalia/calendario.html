@@ -22,6 +22,9 @@
             padding: 20px;
             text-align: center;
             border-bottom: 3px solid #000;
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
 
         .header h1 {
@@ -41,9 +44,9 @@
 
         .main-container {
             max-width: 100%;
-            height: calc(100vh - 120px);
             display: flex;
             flex-direction: column;
+            height: calc(100vh - 80px);
         }
 
         /* Days scroll bar */
@@ -69,7 +72,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-width: 60px;
+            min-width: 70px;
             padding: 10px 8px;
             background-color: #f0f0f0;
             border: 2px solid #ddd;
@@ -79,6 +82,7 @@
             font-size: 11px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            position: relative;
         }
 
         .day-btn:hover {
@@ -92,6 +96,27 @@
             font-weight: bold;
         }
 
+        /* Availability indicator dot */
+        .day-btn::after {
+            content: '';
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            bottom: 4px;
+            right: 4px;
+            background-color: #ccc;
+        }
+
+        .day-btn.has-availability::after {
+            background-color: #4caf50;
+            box-shadow: 0 0 4px rgba(76, 175, 80, 0.6);
+        }
+
+        .day-btn.no-schedule::after {
+            background-color: #999;
+        }
+
         .day-btn-date {
             font-weight: bold;
             font-size: 14px;
@@ -103,6 +128,12 @@
         }
 
         /* Slots container */
+        .content-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
         .slots-container {
             flex: 1;
             overflow-y: auto;
@@ -131,9 +162,12 @@
             display: flex;
             flex-direction: column;
             gap: 8px;
+            margin-bottom: 20px;
         }
 
         .time-slot {
+            display: flex;
+            align-items: center;
             padding: 14px 16px;
             border: 2px solid #ddd;
             border-radius: 6px;
@@ -152,10 +186,6 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
-        .time-slot.available:active {
-            transform: scale(0.98);
-        }
-
         .time-slot.occupied {
             border-color: #ccc;
             background-color: #f0f0f0;
@@ -163,7 +193,21 @@
             cursor: not-allowed;
         }
 
+        .time-slot input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
+            cursor: pointer;
+            accent-color: #ffe927;
+        }
+
+        .time-slot.occupied input[type="checkbox"] {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
         .time-slot-content {
+            flex: 1;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -171,7 +215,7 @@
 
         .time-slot-time {
             font-family: 'Bebas Neue', 'Arial Black', sans-serif;
-            font-size: 20px;
+            font-size: 18px;
             letter-spacing: 1px;
             font-weight: 400;
         }
@@ -226,13 +270,56 @@
             color: #cc0000;
         }
 
-        .footer {
-            background-color: #f5f5f5;
-            padding: 12px 20px;
-            border-top: 2px solid #ffe927;
-            font-size: 12px;
-            color: #999;
-            text-align: center;
+        /* Selection summary & action button */
+        .action-bar {
+            padding: 16px 20px;
+            border-top: 2px solid #ddd;
+            background-color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .selection-info {
+            font-size: 14px;
+            color: #666;
+            min-width: 150px;
+        }
+
+        .selection-info strong {
+            color: #000;
+        }
+
+        .reserve-btn {
+            padding: 12px 24px;
+            background-color: #000;
+            color: #ffe927;
+            border: none;
+            border-radius: 4px;
+            font-family: 'Bebas Neue', 'Arial Black', sans-serif;
+            font-size: 16px;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            font-weight: 400;
+            white-space: nowrap;
+        }
+
+        .reserve-btn:hover:not(:disabled) {
+            background-color: #ffe927;
+            color: #000;
+        }
+
+        .reserve-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .reserve-btn:active:not(:disabled) {
+            transform: scale(0.98);
         }
 
         /* Responsive */
@@ -242,7 +329,7 @@
             }
 
             .day-btn {
-                min-width: 55px;
+                min-width: 60px;
                 padding: 8px 6px;
             }
 
@@ -255,7 +342,16 @@
             }
 
             .time-slot-time {
-                font-size: 18px;
+                font-size: 16px;
+            }
+
+            .action-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .reserve-btn {
+                width: 100%;
             }
         }
     </style>
@@ -274,32 +370,59 @@
             </div>
         </div>
 
-        <!-- Slots section -->
-        <div class="slots-container">
-            <div class="slots-header">
-                <h2 id="selectedDayName">Selecciona un día</h2>
-                <p id="selectedDayText">Haz clic en un día para ver horarios disponibles</p>
-            </div>
-            <div class="slots-list" id="slotsList">
-                <!-- Populated by JS -->
+        <!-- Content: Slots and Action Bar -->
+        <div class="content-container">
+            <div class="slots-container">
+                <div class="slots-header">
+                    <h2 id="selectedDayName">Selecciona un día</h2>
+                    <p id="selectedDayText">Haz clic en un día para ver horarios disponibles</p>
+                </div>
+                <div class="slots-list" id="slotsList">
+                    <!-- Populated by JS -->
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="footer">
-        <p>Toca un horario disponible para contactar vía WhatsApp</p>
+    <!-- Action Bar -->
+    <div class="action-bar">
+        <div class="selection-info">
+            <span id="selectionCount">0 horarios</span> seleccionados
+        </div>
+        <button class="reserve-btn" id="reserveBtn" disabled>
+            Reservar por WhatsApp
+        </button>
     </div>
 
     <script>
-        const DAYS_IN_ADVANCE = 30;
+        const DAYS_IN_ADVANCE = 60;
         const API_ENDPOINT = '{% url "fractalia_disponibilidad_api" %}';
+        const DIAS_API_ENDPOINT = '{% url "fractalia_dias_disponibilidad_api" %}';
         const RESOURCE_ID = {{ resources.first.id|default:'null' }};
 
         let selectedDate = null;
+        let selectedSlots = new Set();
+        let daysAvailability = {};
 
-        // Generate day buttons for next 30 days
+        // Load days availability info
+        function loadDaysAvailability() {
+            if (!RESOURCE_ID) return;
+
+            fetch(`${DIAS_API_ENDPOINT}?resource_id=${RESOURCE_ID}&days=${DAYS_IN_ADVANCE}`)
+                .then(response => response.json())
+                .then(data => {
+                    data.days.forEach(day => {
+                        daysAvailability[day.fecha] = day;
+                    });
+                    generateDayButtons();
+                })
+                .catch(error => console.error('Error loading days:', error));
+        }
+
+        // Generate day buttons for next 60 days
         function generateDayButtons() {
             const daysList = document.getElementById('daysList');
+            daysList.innerHTML = '';
             const today = new Date();
 
             for (let i = 0; i < DAYS_IN_ADVANCE; i++) {
@@ -313,6 +436,16 @@
                 const btn = document.createElement('button');
                 btn.className = 'day-btn';
                 if (i === 0) btn.classList.add('active');
+
+                const dayInfo = daysAvailability[dateStr];
+                if (dayInfo && dayInfo.has_schedule) {
+                    if (dayInfo.has_availability) {
+                        btn.classList.add('has-availability');
+                    }
+                } else {
+                    btn.classList.add('no-schedule');
+                }
+
                 btn.innerHTML = `
                     <div class="day-btn-date">${dayNum}</div>
                     <div class="day-btn-name">${dayName}</div>
@@ -321,7 +454,6 @@
 
                 daysList.appendChild(btn);
 
-                // Select today by default
                 if (i === 0) {
                     selectedDate = dateStr;
                     loadSlots(dateStr);
@@ -331,14 +463,15 @@
 
         // Select a day and load slots
         function selectDay(dateStr, btn) {
-            // Update active button
+            selectedSlots.clear();
+            updateSelectionCount();
+
             document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
 
             selectedDate = dateStr;
             loadSlots(dateStr);
 
-            // Scroll button into view
             btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         }
 
@@ -374,7 +507,7 @@
                            'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'][date.getMonth()];
 
             document.getElementById('selectedDayName').textContent = `${dayName} ${dayNum} de ${month}`;
-            document.getElementById('selectedDayText').textContent = 'Horarios disponibles';
+            document.getElementById('selectedDayText').textContent = 'Selecciona los horarios que desees';
         }
 
         // Render available slots
@@ -398,8 +531,16 @@
                 slotDiv.className = `time-slot ${slot.available ? 'available' : 'occupied'}`;
 
                 const status = slot.available ? 'Disponible' : 'Ocupado';
+                const checkboxId = `slot-${slot.time}`;
 
                 slotDiv.innerHTML = `
+                    <input
+                        type="checkbox"
+                        id="${checkboxId}"
+                        class="slot-checkbox"
+                        data-time="${slot.time}"
+                        ${!slot.available ? 'disabled' : ''}
+                    />
                     <div class="time-slot-content">
                         <div class="time-slot-time">${slot.time}</div>
                         <div class="time-slot-status ${slot.available ? 'available' : 'occupied'}">${status}</div>
@@ -407,30 +548,51 @@
                 `;
 
                 if (slot.available) {
-                    slotDiv.onclick = () => openWhatsApp(data, slot);
+                    const checkbox = slotDiv.querySelector('input[type="checkbox"]');
+                    checkbox.addEventListener('change', (e) => {
+                        if (e.target.checked) {
+                            selectedSlots.add(slot.time);
+                        } else {
+                            selectedSlots.delete(slot.time);
+                        }
+                        updateSelectionCount();
+                    });
                 }
 
                 slotsList.appendChild(slotDiv);
             });
         }
 
-        // Open WhatsApp
-        function openWhatsApp(data, slot) {
-            const resource = data.resource_name;
-            const date = new Date(data.fecha + 'T00:00:00');
+        // Update selection count and button state
+        function updateSelectionCount() {
+            const count = selectedSlots.size;
+            document.getElementById('selectionCount').textContent = `${count} horario${count !== 1 ? 's' : ''}`;
+            document.getElementById('reserveBtn').disabled = count === 0;
+        }
+
+        // Open WhatsApp with selected slots
+        function openWhatsApp() {
+            if (selectedSlots.size === 0) return;
+
+            const resource = document.querySelector('[data-resource-name]')?.getAttribute('data-resource-name') || 'Fractalia';
+            const date = new Date(selectedDate + 'T00:00:00');
             const dayName = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][date.getDay()];
             const dayNum = date.getDate();
             const month = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
                            'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'][date.getMonth()];
 
-            const nextHour = parseInt(slot.time.split(':')[0]) + 1;
-            const endTime = `${nextHour.toString().padStart(2, '0')}:00`;
+            const slots = Array.from(selectedSlots).sort();
+            const slotsText = slots.map(time => {
+                const hour = parseInt(time.split(':')[0]);
+                const nextHour = hour + 1;
+                return `${time}-${nextHour.toString().padStart(2, '0')}:00`;
+            }).join(', ');
 
-            const message = `Hola! Quiero reservar ${resource} el ${dayName} ${dayNum} de ${month} de ${slot.time} a ${endTime}.`;
+            const message = `Hola! Quiero reservar ${resource} el ${dayName} ${dayNum} de ${month} en los siguientes horarios: ${slotsText}.`;
             const whatsappNumber = document.querySelector('[data-whatsapp]')?.getAttribute('data-whatsapp') || '';
 
             if (!whatsappNumber) {
-                showError('Número de WhatsApp no configurado');
+                alert('Número de WhatsApp no configurado');
                 return;
             }
 
@@ -455,12 +617,15 @@
             `;
         }
 
+        // Event listener for reserve button
+        document.getElementById('reserveBtn').addEventListener('click', openWhatsApp);
+
         // Initialize
-        document.addEventListener('DOMContentLoaded', generateDayButtons);
+        document.addEventListener('DOMContentLoaded', loadDaysAvailability);
     </script>
 
     {% if resources.first %}
-        <div data-whatsapp="{{ resources.first.whatsapp_number }}" style="display:none;"></div>
+        <div data-whatsapp="{{ resources.first.whatsapp_number }}" data-resource-name="{{ resources.first.name }}" style="display:none;"></div>
     {% endif %}
 </body>
 </html>
