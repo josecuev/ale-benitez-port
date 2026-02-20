@@ -11,10 +11,18 @@
             box-sizing: border-box;
         }
 
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
         body {
             font-family: system-ui, -apple-system, sans-serif;
             background-color: #f5f5f5;
             color: #333;
+            display: flex;
+            flex-direction: column;
         }
 
         .header {
@@ -22,8 +30,7 @@
             padding: 20px;
             text-align: center;
             border-bottom: 3px solid #000;
-            position: sticky;
-            top: 0;
+            flex-shrink: 0;
             z-index: 100;
         }
 
@@ -43,10 +50,11 @@
         }
 
         .main-container {
-            max-width: 100%;
+            flex: 1;
+            min-height: 0;
             display: flex;
             flex-direction: column;
-            height: calc(100vh - 80px);
+            overflow: hidden;
         }
 
         /* Days scroll bar */
@@ -96,7 +104,6 @@
             font-weight: bold;
         }
 
-        /* Availability indicator dot */
         .day-btn::after {
             content: '';
             position: absolute;
@@ -128,14 +135,9 @@
         }
 
         /* Slots container */
-        .content-container {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-        }
-
         .slots-container {
             flex: 1;
+            min-height: 0;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
             padding: 20px;
@@ -158,6 +160,46 @@
             color: #666;
         }
 
+        .error-message {
+            background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+            border: 3px solid #dc3545;
+            border-radius: 8px;
+            padding: 16px 16px 16px 48px;
+            margin-bottom: 16px;
+            color: #b71c1c;
+            font-size: 14px;
+            font-weight: 500;
+            display: none;
+            position: relative;
+            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.15);
+            animation: slideDown 0.3s ease-out;
+            line-height: 1.5;
+        }
+
+        .error-message::before {
+            content: '⚠️';
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 20px;
+        }
+
+        .error-message.visible {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         .slots-list {
             display: flex;
             flex-direction: column;
@@ -172,13 +214,13 @@
             border: 2px solid #ddd;
             border-radius: 6px;
             background-color: #f9f9f9;
-            cursor: pointer;
             transition: all 0.2s ease;
         }
 
         .time-slot.available {
             border-color: #ffe927;
             background-color: #fffbf0;
+            cursor: pointer;
         }
 
         .time-slot.available:hover {
@@ -250,27 +292,13 @@
             margin-bottom: 12px;
         }
 
-        .empty-state-text {
-            font-size: 14px;
-            line-height: 1.6;
-        }
-
         .loading {
             text-align: center;
             padding: 20px;
             color: #666;
         }
 
-        .error-state {
-            background-color: #ffe4e4;
-            border: 2px solid #ff6b6b;
-            border-radius: 6px;
-            padding: 16px;
-            margin: 20px;
-            color: #cc0000;
-        }
-
-        /* Selection summary & action button */
+        /* Action bar */
         .action-bar {
             padding: 16px 20px;
             border-top: 2px solid #ddd;
@@ -280,12 +308,13 @@
             justify-content: space-between;
             gap: 12px;
             flex-wrap: wrap;
+            flex-shrink: 0;
         }
 
         .selection-info {
             font-size: 14px;
             color: #666;
-            min-width: 150px;
+            min-width: 120px;
         }
 
         .selection-info strong {
@@ -322,7 +351,6 @@
             transform: scale(0.98);
         }
 
-        /* Responsive */
         @media (max-width: 480px) {
             .header h1 {
                 font-size: 24px;
@@ -370,75 +398,133 @@
             </div>
         </div>
 
-        <!-- Content: Slots and Action Bar -->
-        <div class="content-container">
-            <div class="slots-container">
-                <div class="slots-header">
-                    <h2 id="selectedDayName">Selecciona un día</h2>
-                    <p id="selectedDayText">Haz clic en un día para ver horarios disponibles</p>
-                </div>
-                <div class="slots-list" id="slotsList">
-                    <!-- Populated by JS -->
-                </div>
+        <!-- Slots section -->
+        <div class="slots-container">
+            <div class="slots-header">
+                <h2 id="selectedDayName">Selecciona un día</h2>
+                <p id="selectedDayText">Haz clic en un día para ver horarios disponibles</p>
+            </div>
+            <div class="error-message" id="validationError"></div>
+            <div class="slots-list" id="slotsList">
+                <!-- Populated by JS -->
             </div>
         </div>
     </div>
 
-    <!-- Action Bar -->
+    <!-- Action bar -->
     <div class="action-bar">
         <div class="selection-info">
             <span id="selectionCount">0 horarios</span> seleccionados
         </div>
         <button class="reserve-btn" id="reserveBtn" disabled>
-            Reservar por WhatsApp
+            Reservar
         </button>
     </div>
 
     <script>
-        const DAYS_IN_ADVANCE = 60;
+        const BATCH_SIZE = 30;
         const API_ENDPOINT = '{% url "fractalia_disponibilidad_api" %}';
         const DIAS_API_ENDPOINT = '{% url "fractalia_dias_disponibilidad_api" %}';
+        const PENDING_BOOKING_ENDPOINT = '{% url "fractalia_create_pending_booking" %}';
         const RESOURCE_ID = {{ resources.first.id|default:'null' }};
 
         let selectedDate = null;
         let selectedSlots = new Set();
-        let daysAvailability = {};
+        let daysLoaded = 0;
+        let loadingBatch = false;
+        let nextBatchDate = null;
 
-        // Load days availability info
-        function loadDaysAvailability() {
-            if (!RESOURCE_ID) return;
-
-            fetch(`${DIAS_API_ENDPOINT}?resource_id=${RESOURCE_ID}&days=${DAYS_IN_ADVANCE}`)
-                .then(response => response.json())
-                .then(data => {
-                    data.days.forEach(day => {
-                        daysAvailability[day.fecha] = day;
-                    });
-                    generateDayButtons();
-                })
-                .catch(error => console.error('Error loading days:', error));
+        // Get CSRF token from cookie
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
         }
 
-        // Generate day buttons for next 60 days
-        function generateDayButtons() {
+        // Validate if slots are contiguous and valid duration
+        function isValidReservation(slots) {
+            const VALID_DURATIONS = [2, 4, 6, 8];  // Only 2, 4, 6, or 8 hours allowed
+
+            // Check if any slots selected
+            if (slots.size === 0) return false;
+
+            // Check duration is valid (2, 4, 6, or 8 hours)
+            if (!VALID_DURATIONS.includes(slots.size)) return false;
+
+            // Check if slots are contiguous
+            const hours = Array.from(slots)
+                .map(t => parseInt(t.split(':')[0]))
+                .sort((a, b) => a - b);
+
+            for (let i = 1; i < hours.length; i++) {
+                if (hours[i] - hours[i - 1] !== 1) return false;  // Not contiguous
+            }
+
+            return true;
+        }
+
+        // Legacy function for compatibility
+        function isContiguous(slots) {
+            if (slots.size === 0) return false;
+            const hours = Array.from(slots)
+                .map(t => parseInt(t.split(':')[0]))
+                .sort((a, b) => a - b);
+            for (let i = 1; i < hours.length; i++) {
+                if (hours[i] - hours[i - 1] !== 1) return false;
+            }
+            return true;
+        }
+
+        // Load a batch of days
+        function loadDaysBatch(fromDate, batchSize) {
+            if (loadingBatch) return Promise.resolve();
+            loadingBatch = true;
+
+            const fromDateStr = fromDate ? fromDate.toISOString().split('T')[0] : undefined;
+            let url = `${DIAS_API_ENDPOINT}?resource_id=${RESOURCE_ID}&days=${batchSize}`;
+            if (fromDateStr) url += `&from_date=${fromDateStr}`;
+
+            return fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    createDayButtons(data.days);
+                    daysLoaded += data.days.length;
+                    const lastDate = data.days[data.days.length - 1].fecha;
+                    nextBatchDate = new Date(lastDate + 'T00:00:00');
+                    nextBatchDate.setDate(nextBatchDate.getDate() + 1);
+                    loadingBatch = false;
+                    return nextBatchDate;
+                })
+                .catch(error => {
+                    console.error('Error loading batch:', error);
+                    loadingBatch = false;
+                    throw error;
+                });
+        }
+
+        // Create day buttons
+        function createDayButtons(daysData) {
             const daysList = document.getElementById('daysList');
-            daysList.innerHTML = '';
-            const today = new Date();
 
-            for (let i = 0; i < DAYS_IN_ADVANCE; i++) {
-                const date = new Date(today);
-                date.setDate(date.getDate() + i);
-
-                const dateStr = date.toISOString().split('T')[0];
+            daysData.forEach(dayInfo => {
+                const date = new Date(dayInfo.fecha + 'T00:00:00');
                 const dayName = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][date.getDay()];
                 const dayNum = date.getDate();
 
                 const btn = document.createElement('button');
                 btn.className = 'day-btn';
-                if (i === 0) btn.classList.add('active');
+                btn.dataset.date = dayInfo.fecha;
 
-                const dayInfo = daysAvailability[dateStr];
-                if (dayInfo && dayInfo.has_schedule) {
+                if (dayInfo.has_schedule) {
                     if (dayInfo.has_availability) {
                         btn.classList.add('has-availability');
                     }
@@ -450,21 +536,37 @@
                     <div class="day-btn-date">${dayNum}</div>
                     <div class="day-btn-name">${dayName}</div>
                 `;
-                btn.onclick = () => selectDay(dateStr, btn);
 
+                btn.addEventListener('click', () => selectDay(dayInfo.fecha, btn));
                 daysList.appendChild(btn);
+            });
 
-                if (i === 0) {
-                    selectedDate = dateStr;
-                    loadSlots(dateStr);
-                }
+            // Add sentinel for infinite scroll
+            if (daysLoaded === BATCH_SIZE) {
+                const sentinel = document.createElement('div');
+                sentinel.id = 'scroll-sentinel';
+                sentinel.style.width = '1px';
+                sentinel.style.height = '60px';
+                daysList.appendChild(sentinel);
+
+                const daysContainer = document.querySelector('.days-container');
+                const observer = new IntersectionObserver((entries) => {
+                    if (entries[0].isIntersecting && !loadingBatch) {
+                        loadDaysBatch(nextBatchDate, BATCH_SIZE).then(() => {
+                            // Sentinel moved to end, observer will trigger again
+                        });
+                    }
+                }, { root: daysContainer, threshold: 0.1 });
+
+                observer.observe(sentinel);
             }
         }
 
-        // Select a day and load slots
+        // Select a day
         function selectDay(dateStr, btn) {
             selectedSlots.clear();
             updateSelectionCount();
+            hideValidationError();
 
             document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
@@ -475,7 +577,7 @@
             btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         }
 
-        // Load available slots from API
+        // Load slots for selected day
         function loadSlots(dateStr) {
             if (!RESOURCE_ID) {
                 showEmptyState('No hay recursos disponibles');
@@ -499,18 +601,10 @@
                     showError('Error al cargar los horarios');
                 });
 
-            // Update header
-            const date = new Date(dateStr + 'T00:00:00');
-            const dayName = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][date.getDay()];
-            const dayNum = date.getDate();
-            const month = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-                           'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'][date.getMonth()];
-
-            document.getElementById('selectedDayName').textContent = `${dayName} ${dayNum} de ${month}`;
-            document.getElementById('selectedDayText').textContent = 'Selecciona los horarios que desees';
+            updateHeader(dateStr);
         }
 
-        // Render available slots
+        // Render slots
         function renderSlots(data) {
             const slotsList = document.getElementById('slotsList');
 
@@ -518,7 +612,7 @@
                 slotsList.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-state-icon">📅</div>
-                        <div class="empty-state-text">No hay horarios disponibles en esta fecha</div>
+                        <div>No hay horarios disponibles en esta fecha</div>
                     </div>
                 `;
                 return;
@@ -537,7 +631,6 @@
                     <input
                         type="checkbox"
                         id="${checkboxId}"
-                        class="slot-checkbox"
                         data-time="${slot.time}"
                         ${!slot.available ? 'disabled' : ''}
                     />
@@ -549,8 +642,8 @@
 
                 if (slot.available) {
                     const checkbox = slotDiv.querySelector('input[type="checkbox"]');
-                    checkbox.addEventListener('change', (e) => {
-                        if (e.target.checked) {
+                    checkbox.addEventListener('change', () => {
+                        if (checkbox.checked) {
                             selectedSlots.add(slot.time);
                         } else {
                             selectedSlots.delete(slot.time);
@@ -567,37 +660,112 @@
         function updateSelectionCount() {
             const count = selectedSlots.size;
             document.getElementById('selectionCount').textContent = `${count} horario${count !== 1 ? 's' : ''}`;
-            document.getElementById('reserveBtn').disabled = count === 0;
+
+            const isValid = isValidReservation(selectedSlots);
+            document.getElementById('reserveBtn').disabled = !isValid;
+
+            // Show appropriate error message
+            if (count > 0 && !isValid) {
+                if (![2, 4, 6, 8].includes(count)) {
+                    showValidationError(`❌ Duración inválida (${count}h). Las reservas deben ser de 2, 4, 6 u 8 horas.`);
+                } else if (!isContiguous(selectedSlots)) {
+                    showValidationError('❌ Horarios no contiguos. Los horarios deben ser consecutivos sin interrupciones.');
+                }
+            } else {
+                hideValidationError();
+            }
         }
 
-        // Open WhatsApp with selected slots
-        function openWhatsApp() {
-            if (selectedSlots.size === 0) return;
+        // Validation error messages
+        function showValidationError(message) {
+            const errorDiv = document.getElementById('validationError');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('visible');
+        }
 
-            const resource = document.querySelector('[data-resource-name]')?.getAttribute('data-resource-name') || 'Fractalia';
-            const date = new Date(selectedDate + 'T00:00:00');
+        function hideValidationError() {
+            document.getElementById('validationError').classList.remove('visible');
+        }
+
+        // Handle reservation
+        async function handleReservation() {
+            if (!isValidReservation(selectedSlots)) return;
+
+            const slots = Array.from(selectedSlots).sort();
+            const startTime = slots[0];
+            const endHour = parseInt(slots[slots.length - 1].split(':')[0]) + 1;
+            const endTime = `${endHour.toString().padStart(2, '0')}:00`;
+
+            const reserveBtn = document.getElementById('reserveBtn');
+            reserveBtn.disabled = true;
+            reserveBtn.textContent = 'Creando reserva...';
+
+            try {
+                const response = await fetch(PENDING_BOOKING_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken'),
+                    },
+                    body: JSON.stringify({
+                        resource_id: RESOURCE_ID,
+                        fecha: selectedDate,
+                        start_time: startTime,
+                        end_time: endTime,
+                    }),
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Error al crear la reserva');
+                }
+
+                const data = await response.json();
+                const code = data.code;
+
+                // Get resource name
+                const resourceName = document.querySelector('[data-resource-name]')?.getAttribute('data-resource-name') || 'Fractalia';
+
+                // Format date
+                const date = new Date(selectedDate + 'T00:00:00');
+                const dayName = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][date.getDay()];
+                const dayNum = date.getDate();
+                const month = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                               'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'][date.getMonth()];
+
+                // Build WhatsApp message
+                const message = `Hola! Quiero reservar ${resourceName} el ${dayName} ${dayNum} de ${month} de ${startTime} a ${endTime}. Mi código de reserva es: ${code}`;
+
+                // Open WhatsApp
+                const whatsappNumber = document.querySelector('[data-whatsapp]')?.getAttribute('data-whatsapp') || '';
+                if (whatsappNumber) {
+                    const whatsappURL = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+                    window.open(whatsappURL, '_blank');
+                }
+
+                // Reset
+                selectedSlots.clear();
+                updateSelectionCount();
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert(`Error: ${error.message}`);
+            } finally {
+                reserveBtn.disabled = false;
+                reserveBtn.textContent = 'Reservar';
+            }
+        }
+
+        // Update header
+        function updateHeader(dateStr) {
+            const date = new Date(dateStr + 'T00:00:00');
             const dayName = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][date.getDay()];
             const dayNum = date.getDate();
             const month = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
                            'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'][date.getMonth()];
 
-            const slots = Array.from(selectedSlots).sort();
-            const slotsText = slots.map(time => {
-                const hour = parseInt(time.split(':')[0]);
-                const nextHour = hour + 1;
-                return `${time}-${nextHour.toString().padStart(2, '0')}:00`;
-            }).join(', ');
-
-            const message = `Hola! Quiero reservar ${resource} el ${dayName} ${dayNum} de ${month} en los siguientes horarios: ${slotsText}.`;
-            const whatsappNumber = document.querySelector('[data-whatsapp]')?.getAttribute('data-whatsapp') || '';
-
-            if (!whatsappNumber) {
-                alert('Número de WhatsApp no configurado');
-                return;
-            }
-
-            const whatsappURL = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
-            window.open(whatsappURL, '_blank');
+            document.getElementById('selectedDayName').textContent = `${dayName} ${dayNum} de ${month}`;
+            document.getElementById('selectedDayText').textContent = 'Selecciona los horarios que desees';
         }
 
         // Show empty state
@@ -605,7 +773,7 @@
             document.getElementById('slotsList').innerHTML = `
                 <div class="empty-state">
                     <div class="empty-state-icon">🚫</div>
-                    <div class="empty-state-text">${message}</div>
+                    <div>${message}</div>
                 </div>
             `;
         }
@@ -613,15 +781,19 @@
         // Show error
         function showError(message) {
             document.getElementById('slotsList').innerHTML = `
-                <div class="error-state">${message}</div>
+                <div style="background-color: #ffe4e4; border: 2px solid #ff6b6b; border-radius: 6px; padding: 16px; color: #cc0000;">${message}</div>
             `;
         }
 
         // Event listener for reserve button
-        document.getElementById('reserveBtn').addEventListener('click', openWhatsApp);
+        document.getElementById('reserveBtn').addEventListener('click', handleReservation);
 
         // Initialize
-        document.addEventListener('DOMContentLoaded', loadDaysAvailability);
+        document.addEventListener('DOMContentLoaded', () => {
+            if (RESOURCE_ID) {
+                loadDaysBatch(null, BATCH_SIZE);
+            }
+        });
     </script>
 
     {% if resources.first %}

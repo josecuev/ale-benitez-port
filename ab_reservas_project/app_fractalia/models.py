@@ -1,6 +1,8 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 from datetime import datetime, timedelta
+import random
+import string
 
 
 class Resource(models.Model):
@@ -113,3 +115,37 @@ class Booking(models.Model):
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
+
+
+def generate_reservation_code():
+    """Generate a unique 4-character alphanumeric code (uppercase)"""
+    chars = string.ascii_uppercase + string.digits
+    while True:
+        code = ''.join(random.choices(chars, k=4))
+        if not PendingBooking.objects.filter(reservation_code=code).exists():
+            return code
+
+
+class PendingBooking(models.Model):
+    STATUS_CHOICES = [
+        ('PENDING', 'Pendiente'),
+        ('CONFIRMED', 'Confirmada'),
+        ('REJECTED', 'Rechazada'),
+    ]
+
+    resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name='pending_bookings')
+    date = models.DateField()
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    reservation_code = models.CharField(max_length=4, unique=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Reserva pendiente'
+        verbose_name_plural = 'Reservas pendientes'
+        ordering = ('-created_at',)
+
+    def __str__(self):
+        return f'{self.reservation_code} - {self.resource.name} ({self.status})'
