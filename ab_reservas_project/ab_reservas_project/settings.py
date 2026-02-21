@@ -176,12 +176,20 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 
-# CSRF — lee desde variables de entorno
-_csrf_origins = os.environ.get(
-    'CSRF_TRUSTED_ORIGINS',
-    'http://localhost:8000,http://127.0.0.1:8000'
-)
-CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf_origins.split(',')]
+# CSRF — construir desde ALLOWED_HOSTS o env var
+if os.environ.get('CSRF_TRUSTED_ORIGINS'):
+    # Si está explícitamente definido en env
+    _csrf_origins = os.environ.get('CSRF_TRUSTED_ORIGINS')
+    CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf_origins.split(',')]
+else:
+    # Si no, construir desde ALLOWED_HOSTS con el scheme correcto
+    _scheme = 'https' if not DEBUG else 'http'
+    CSRF_TRUSTED_ORIGINS = [
+        f"{_scheme}://{host}" for host in ALLOWED_HOSTS if host not in ('*', '127.0.0.1', 'localhost')
+    ]
+    # Para dev, agregar localhost con http
+    if DEBUG:
+        CSRF_TRUSTED_ORIGINS.extend(['http://localhost:8000', 'http://127.0.0.1:8000'])
 
 CSRF_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_HTTPONLY = False
