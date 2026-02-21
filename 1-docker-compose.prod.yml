@@ -1,8 +1,18 @@
+networks:
+  traefik_public:
+    external: true
+
+volumes:
+  traefik-certs:
+    driver: local
+
 services:
   traefik:
     image: traefik:v2.10
     container_name: traefik
     restart: unless-stopped
+    networks:
+      - traefik_public
     ports:
       - "80:80"
       - "443:443"
@@ -12,27 +22,34 @@ services:
     command:
       - --providers.docker=true
       - --providers.docker.exposedByDefault=false
+      - --providers.docker.network=traefik_public
       - --entrypoints.web.address=:80
       - --entrypoints.websecure.address=:443
-      - --certificatesresolvers.le.acme.email=tu-email@ejemplo.com
+      # HTTP → HTTPS global
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.web.http.redirections.entrypoint.permanent=true
+      # Let's Encrypt HTTP-01
+      - --certificatesresolvers.le.acme.email=jmcuev89@gmail.com
       - --certificatesresolvers.le.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.le.acme.httpchallenge=true
       - --certificatesresolvers.le.acme.httpchallenge.entrypoint=web
+      - --api.dashboard=false
+      - --log.level=INFO
 
-  frontend:
+  ab-frontend:
     build:
-      context: .                   # contexto = raíz del monorepo
+      context: .
       dockerfile: ab-frontend/Dockerfile
     container_name: ab-frontend
     restart: unless-stopped
-    ports:
-      - "3333:80"
+    networks:
+      - traefik_public
     labels:
-    - "traefik.enable=true"
-    - "traefik.http.routers.ab-frontend.rule=Host(`www.alejandrobenitez.com`) || Host(`alejandrobenitez.com`)"
-    - "traefik.http.routers.ab-frontend.entrypoints=websecure"
-    - "traefik.http.routers.ab-frontend.tls=true"
-    - "traefik.http.routers.ab-frontend.tls.certresolver=le"
-
-volumes:
-  traefik-certs:
-    driver: local
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik_public"
+      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+      - "traefik.http.routers.frontend.rule=Host(`alejandrobenitez.com`) || Host(`www.alejandrobenitez.com`)"
+      - "traefik.http.routers.frontend.entrypoints=websecure"
+      - "traefik.http.routers.frontend.tls=true"
+      - "traefik.http.routers.frontend.tls.certresolver=le"

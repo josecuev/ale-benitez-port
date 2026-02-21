@@ -1,0 +1,74 @@
+networks:
+  traefik_public:
+    external: true
+
+volumes:
+  pgdata:
+    driver: local
+
+services:
+  ab-django:
+    build:
+      context: ./ab_reservas_project
+      dockerfile: Dockerfile
+    container_name: ab-django
+    restart: unless-stopped
+    networks:
+      - traefik_public
+    env_file:
+      - ./ab_reservas_project/.env.prod
+    depends_on:
+      db:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik_public"
+      - "traefik.http.services.django.loadbalancer.server.port=8000"
+
+      # Middleware: redirect raíz → /fractalia/calendario/
+      - "traefik.http.middlewares.fractalia-root-redirect.redirectregex.regex=^https://fractalia\\.alejandrobenitez\\.com/?$$"
+      - "traefik.http.middlewares.fractalia-root-redirect.redirectregex.replacement=https://fractalia.alejandrobenitez.com/fractalia/calendario/"
+      - "traefik.http.middlewares.fractalia-root-redirect.redirectregex.permanent=true"
+      # Middleware: redirect raíz → /admin/
+      - "traefik.http.middlewares.admin-root-redirect.redirectregex.regex=^https://admin\\.alejandrobenitez\\.com/?$$"
+      - "traefik.http.middlewares.admin-root-redirect.redirectregex.replacement=https://admin.alejandrobenitez.com/admin/"
+      - "traefik.http.middlewares.admin-root-redirect.redirectregex.permanent=true"
+
+      # Router: links.alejandrobenitez.com → / (app_links, sin middleware)
+      - "traefik.http.routers.django-links.rule=Host(`links.alejandrobenitez.com`)"
+      - "traefik.http.routers.django-links.entrypoints=websecure"
+      - "traefik.http.routers.django-links.tls=true"
+      - "traefik.http.routers.django-links.tls.certresolver=le"
+      - "traefik.http.routers.django-links.service=django"
+
+      # Router: fractalia.alejandrobenitez.com
+      - "traefik.http.routers.django-fractalia.rule=Host(`fractalia.alejandrobenitez.com`)"
+      - "traefik.http.routers.django-fractalia.entrypoints=websecure"
+      - "traefik.http.routers.django-fractalia.tls=true"
+      - "traefik.http.routers.django-fractalia.tls.certresolver=le"
+      - "traefik.http.routers.django-fractalia.service=django"
+      - "traefik.http.routers.django-fractalia.middlewares=fractalia-root-redirect"
+
+      # Router: admin.alejandrobenitez.com
+      - "traefik.http.routers.django-admin.rule=Host(`admin.alejandrobenitez.com`)"
+      - "traefik.http.routers.django-admin.entrypoints=websecure"
+      - "traefik.http.routers.django-admin.tls=true"
+      - "traefik.http.routers.django-admin.tls.certresolver=le"
+      - "traefik.http.routers.django-admin.service=django"
+      - "traefik.http.routers.django-admin.middlewares=admin-root-redirect"
+
+  db:
+    image: postgres:16-alpine
+    container_name: ab-db
+    restart: unless-stopped
+    networks:
+      - traefik_public
+    env_file:
+      - ./ab_reservas_project/.env.prod
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

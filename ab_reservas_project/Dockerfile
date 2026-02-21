@@ -25,7 +25,9 @@ RUN poetry install --no-root
 # Copiar el resto del código fuente
 COPY . .
 
+# Hacer ejecutable el entrypoint
+RUN chmod +x /app/entrypoint.sh
+
 EXPOSE 8000
 
-# Ejecutar Uvicorn en modo desarrollo con autoreload
-CMD ["poetry", "run", "uvicorn", "ab_reservas_project.asgi:application", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+ENTRYPOINT ["/app/entrypoint.sh"]

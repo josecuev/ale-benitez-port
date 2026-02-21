@@ -55,6 +55,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -156,23 +157,38 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"  # para colectar en prod
 
-# Si vas a tener CSS/JS propios en dev:
-STATICFILES_DIRS = [BASE_DIR / "static"]  # crea la carpeta
+# Solo incluir STATICFILES_DIRS si el directorio existe
+_static_dir = BASE_DIR / "static"
+STATICFILES_DIRS = [_static_dir] if _static_dir.exists() else []
+
+# WhiteNoise: servir archivos estáticos con compresión de larga duración
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # Media
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-ALLOWED_HOSTS=['*']
 
-# CSRF Configuration para Docker
-CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:8000',
-    'http://127.0.0.1:8000',
-    'http://0.0.0.0:8000',
-]
+# CSRF — lee desde variables de entorno
+_csrf_origins = os.environ.get(
+    'CSRF_TRUSTED_ORIGINS',
+    'http://localhost:8000,http://127.0.0.1:8000'
+)
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf_origins.split(',')]
 
-# Permitir cookies en desarrollo
-CSRF_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SECURE = not DEBUG
+
+# Sesión compartida entre todos los subdominios de alejandrobenitez.com
+# Permite que un admin logueado en admin.alejandrobenitez.com
+# sea reconocido también en fractalia.alejandrobenitez.com y links.alejandrobenitez.com
+SESSION_COOKIE_DOMAIN = os.environ.get('SESSION_COOKIE_DOMAIN', None)
