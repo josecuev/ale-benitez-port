@@ -199,7 +199,7 @@ SESSION_COOKIE_SECURE = not DEBUG
 # Sesión compartida entre todos los subdominios de alejandrobenitez.com
 # Permite que un admin logueado en admin.alejandrobenitez.com
 # sea reconocido también en fractalia.alejandrobenitez.com y links.alejandrobenitez.com
-SESSION_COOKIE_DOMAIN = os.environ.get('SESSION_COOKIE_DOMAIN', None)
+SESSION_COOKIE_DOMAIN = None
 
 # PRODUCCIÓN: Traefik como reverse proxy
 # Traefik comunica con Django por HTTP internamente pero el cliente usa HTTPS
