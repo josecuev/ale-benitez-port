@@ -23,6 +23,5 @@ description = "Proyecto Django de reservas"
 authors = ["josecuevas <jmcuev89@gmail.com>"]
 
 packages = [
-  { include = "ab_reservas_project" },
-  { include = "app_reservas" }
+  { include = "ab_reservas_project" }
 ]
