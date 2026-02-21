@@ -18,6 +18,7 @@ class Resource(models.Model):
         return self.name
 
 
+
 class WeeklyAvailability(models.Model):
     WEEKDAY_CHOICES = [
         (0, 'Lunes'),
@@ -131,6 +132,7 @@ class PendingBooking(models.Model):
         ('PENDING', 'Pendiente'),
         ('CONFIRMED', 'Confirmada'),
         ('REJECTED', 'Rechazada'),
+        ('CANCELLED', 'Cancelada'),
     ]
 
     resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name='pending_bookings')
