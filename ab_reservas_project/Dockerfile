@@ -19,6 +19,8 @@ RUN curl -sSL https://install.python-poetry.org | python3 - --version $POETRY_VE
 # Copiar archivos de dependencias y resolver con caché
 COPY pyproject.toml poetry.lock* ./
 
+RUN poetry lock
+
 # Instalar dependencias
 RUN poetry install --no-root
 
