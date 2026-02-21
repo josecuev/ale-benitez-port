@@ -71,7 +71,7 @@ class Booking(models.Model):
     def clean(self):
         # Validar que end_datetime sea después de start_datetime
         if self.end_datetime <= self.start_datetime:
-            raise ValidationError('La hora de fin debe ser posterior a la hora de inicio.')
+            raise ValidationError('La hora final debe ser más tarde que la hora de inicio.')
 
         # Si es una reserva confirmada, validar contra otras reservas confirmadas
         if self.status == 'CONFIRMED':
@@ -89,7 +89,7 @@ class Booking(models.Model):
 
             if overlapping.exists():
                 raise ValidationError(
-                    f'Ya existe una reserva confirmada que se superpone con este horario.'
+                    f'Este horario ya está ocupado por otra reserva.'
                 )
 
             # Solo validar horarios disponibles si es una reserva nueva (no tiene ID)
@@ -108,13 +108,13 @@ class Booking(models.Model):
 
                     if not (availability.start_time <= booking_start_time and booking_end_time <= availability.end_time):
                         raise ValidationError(
-                            f'El horario de la reserva está fuera del horario disponible '
-                            f'({availability.start_time} - {availability.end_time}).'
+                            f'Este horario está fuera del horario disponible. '
+                            f'Disponible de {availability.start_time} a {availability.end_time}.'
                         )
                 else:
                     day_name = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'][weekday]
                     raise ValidationError(
-                        f'No hay horario disponible definido para {day_name}.'
+                        f'No hay horario disponible configurado para {day_name}.'
                     )
 
     def save(self, *args, **kwargs):
@@ -156,3 +156,4 @@ class PendingBooking(models.Model):
 
     def __str__(self):
         return f'{self.reservation_code} - {self.resource.name} ({self.status})'
+

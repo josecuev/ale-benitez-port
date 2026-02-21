@@ -81,15 +81,13 @@ class BookingAdmin(admin.ModelAdmin):
                 incompatible_count += 1
 
         if cancelled_count > 0:
-            self.message_user(
-                request,
-                f'{cancelled_count} reserva(s) cancelada(s).',
-                messages.SUCCESS
-            )
+            mensaje = f'✓ {cancelled_count} reserva cancelada.' if cancelled_count == 1 else f'✓ {cancelled_count} reservas canceladas.'
+            self.message_user(request, mensaje, messages.SUCCESS)
         if incompatible_count > 0:
+            palabra = 'reserva' if incompatible_count == 1 else 'reservas'
             self.message_user(
                 request,
-                f'{incompatible_count} reserva(s) no se pueden cancelar.',
+                f'⚠ {incompatible_count} {palabra} no estaba en estado Confirmada.',
                 messages.WARNING
             )
 
@@ -118,15 +116,13 @@ class BookingAdmin(admin.ModelAdmin):
                 incompatible_count += 1
 
         if reactivated_count > 0:
-            self.message_user(
-                request,
-                f'{reactivated_count} reserva(s) reactivada(s).',
-                messages.SUCCESS
-            )
+            mensaje = f'✓ {reactivated_count} reserva reactivada.' if reactivated_count == 1 else f'✓ {reactivated_count} reservas reactivadas.'
+            self.message_user(request, mensaje, messages.SUCCESS)
         if incompatible_count > 0:
+            palabra = 'reserva' if incompatible_count == 1 else 'reservas'
             self.message_user(
                 request,
-                f'{incompatible_count} reserva(s) no se pueden reactivar.',
+                f'⚠ {incompatible_count} {palabra} no estaba en estado Cancelada.',
                 messages.WARNING
             )
 
@@ -182,24 +178,23 @@ class PendingBookingAdmin(admin.ModelAdmin):
                     pending.save()
                     confirmed_count += 1
                 except Exception as e:
+                    error_msg = str(e).replace('["__all__"]', '').replace('{', '').replace('}', '').strip("'\"")
                     self.message_user(
                         request,
-                        f'Error al confirmar {pending.reservation_code}: {str(e)}',
+                        f'❌ No se pudo confirmar {pending.reservation_code}: {error_msg}',
                         messages.ERROR
                     )
             else:
                 incompatible_count += 1
 
         if confirmed_count > 0:
-            self.message_user(
-                request,
-                f'{confirmed_count} reserva(s) confirmada(s).',
-                messages.SUCCESS
-            )
+            mensaje = f'✓ {confirmed_count} solicitud confirmada.' if confirmed_count == 1 else f'✓ {confirmed_count} solicitudes confirmadas.'
+            self.message_user(request, mensaje, messages.SUCCESS)
         if incompatible_count > 0:
+            palabra = 'solicitud' if incompatible_count == 1 else 'solicitudes'
             self.message_user(
                 request,
-                f'{incompatible_count} reserva(s) no se pueden confirmar.',
+                f'⚠ {incompatible_count} {palabra} no estaba Pendiente o Rechazada.',
                 messages.WARNING
             )
 
@@ -218,24 +213,23 @@ class PendingBookingAdmin(admin.ModelAdmin):
                     pending.save()
                     undone_count += 1
                 except Exception as e:
+                    error_msg = str(e).replace('["__all__"]', '').replace('{', '').replace('}', '').strip("'\"")
                     self.message_user(
                         request,
-                        f'Error al deshacer {pending.reservation_code}: {str(e)}',
+                        f'❌ No se pudo deshacer {pending.reservation_code}: {error_msg}',
                         messages.ERROR
                     )
             else:
                 incompatible_count += 1
 
         if undone_count > 0:
-            self.message_user(
-                request,
-                f'{undone_count} reserva(s) vuelta(s) a pendiente.',
-                messages.SUCCESS
-            )
+            mensaje = f'✓ {undone_count} solicitud volvió a Pendiente.' if undone_count == 1 else f'✓ {undone_count} solicitudes volvieron a Pendiente.'
+            self.message_user(request, mensaje, messages.SUCCESS)
         if incompatible_count > 0:
+            palabra = 'solicitud' if incompatible_count == 1 else 'solicitudes'
             self.message_user(
                 request,
-                f'{incompatible_count} reserva(s) no se pueden deshacer.',
+                f'⚠ {incompatible_count} {palabra} no estaba Confirmada.',
                 messages.WARNING
             )
 
