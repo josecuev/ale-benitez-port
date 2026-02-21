@@ -4,14 +4,8 @@ services:
       context: ./ab_reservas_project
       dockerfile: Dockerfile
     container_name: ab-reservas-web
-    environment:
-      DJANGO_DEBUG: "1"
-      DJANGO_SETTINGS_MODULE: ab_reservas_project.settings
-      POSTGRES_DB: ab_reservas
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_HOST: db
-      POSTGRES_PORT: "5432"
+    env_file:
+      - ./ab_reservas_project/.env
     volumes:
       - ./ab_reservas_project:/app
     ports:
@@ -25,10 +19,8 @@ services:
   db:
     image: postgres:16-alpine
     container_name: ab-reservas-db
-    environment:
-      POSTGRES_DB: ab_reservas
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+    env_file:
+      - ./ab_reservas_project/.env
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:

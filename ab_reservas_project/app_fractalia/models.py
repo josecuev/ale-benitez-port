@@ -138,6 +138,7 @@ class PendingBooking(models.Model):
     start_time = models.TimeField()
     end_time = models.TimeField()
     reservation_code = models.CharField(max_length=4, unique=True)
+    client_name = models.CharField(max_length=100, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

@@ -525,6 +525,61 @@
             color: #555;
         }
 
+        /* Resumen de la reserva (paso 1) */
+        .confirm-summary {
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #444;
+            line-height: 1.6;
+            text-align: left;
+        }
+
+        /* Campo nombre */
+        .confirm-name-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .confirm-name-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #555;
+            margin-bottom: 6px;
+        }
+
+        .confirm-name-input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            font-family: system-ui, -apple-system, sans-serif;
+            outline: none;
+            transition: border-color 0.2s;
+            box-sizing: border-box;
+        }
+
+        .confirm-name-input:focus {
+            border-color: #ffe927;
+        }
+
+        .confirm-name-input.input-error {
+            border-color: #dc3545;
+        }
+
+        .confirm-name-error {
+            font-size: 12px;
+            color: #dc3545;
+            margin-top: 4px;
+            min-height: 16px;
+        }
+
         @media (max-width: 480px) {
             .header h1 {
                 font-size: 24px;
@@ -611,31 +666,63 @@
     <!-- Confirmation Modal -->
     <div class="confirm-overlay" id="confirmOverlay">
         <div class="confirm-modal">
-            <div class="confirm-icon">✅</div>
-            <h2 class="confirm-title">¡Pre-reserva creada!</h2>
-            <p class="confirm-subtitle">
-                Tu solicitud fue registrada. Para confirmar la reserva, comunicate con nosotros.
-            </p>
 
-            <div class="confirm-code-box">
-                <div class="confirm-code-label">Tu código de reserva</div>
-                <div class="confirm-code" id="confirmCode">----</div>
+            <!-- Paso 1: Ingreso de nombre -->
+            <div id="confirmStep1">
+                <div class="confirm-icon">📅</div>
+                <h2 class="confirm-title">¡Casi listo!</h2>
+                <p class="confirm-subtitle">Ingresá tu nombre para registrar la pre-reserva.</p>
+
+                <div class="confirm-summary" id="confirmSummary"></div>
+
+                <div class="confirm-name-group">
+                    <label class="confirm-name-label" for="confirmName">Tu nombre</label>
+                    <input
+                        class="confirm-name-input"
+                        type="text"
+                        id="confirmName"
+                        placeholder="Ej: María García"
+                        maxlength="100"
+                        autocomplete="name"
+                    />
+                    <div class="confirm-name-error" id="confirmNameError"></div>
+                </div>
+
+                <button class="confirm-btn confirm-btn-whatsapp" id="confirmSubmitBtn">
+                    Confirmar pre-reserva
+                </button>
+                <button class="confirm-close" id="confirmCancel">Cancelar</button>
             </div>
 
-            <p class="confirm-hint">
-                Mencioná este código al escribir o llamar para que podamos identificar tu reserva rápidamente.
-            </p>
+            <!-- Paso 2: Código y opciones de contacto -->
+            <div id="confirmStep2" style="display:none;">
+                <div class="confirm-icon">✅</div>
+                <h2 class="confirm-title">¡Pre-reserva creada!</h2>
+                <p class="confirm-subtitle">
+                    Tu solicitud fue registrada. Para confirmarla, comunicate con nosotros.
+                </p>
 
-            <div class="confirm-actions">
-                <a class="confirm-btn confirm-btn-whatsapp" id="confirmWhatsappBtn" href="#" target="_blank">
-                    Enviar mensaje por WhatsApp
-                </a>
-                <a class="confirm-btn confirm-btn-call" id="confirmCallBtn" href="#">
-                    Llamar
-                </a>
+                <div class="confirm-code-box">
+                    <div class="confirm-code-label">Tu código de reserva</div>
+                    <div class="confirm-code" id="confirmCode">----</div>
+                </div>
+
+                <p class="confirm-hint">
+                    Mencioná este código al escribir o llamar para que podamos identificar tu reserva rápidamente.
+                </p>
+
+                <div class="confirm-actions">
+                    <a class="confirm-btn confirm-btn-whatsapp" id="confirmWhatsappBtn" href="#" target="_blank">
+                        Enviar mensaje por WhatsApp
+                    </a>
+                    <a class="confirm-btn confirm-btn-call" id="confirmCallBtn" href="#">
+                        Llamar
+                    </a>
+                </div>
+
+                <button class="confirm-close" id="confirmClose">Cerrar</button>
             </div>
 
-            <button class="confirm-close" id="confirmClose">Cerrar</button>
         </div>
     </div>
 
@@ -913,7 +1000,11 @@
         }
 
         // Handle reservation
-        async function handleReservation() {
+        // Pending reservation data (set when modal opens)
+        let _pendingSlots = null;
+
+        // Step 1: Open modal with name field (no POST yet)
+        function handleReservation() {
             if (!isValidReservation(selectedSlots)) return;
 
             const slots = Array.from(selectedSlots).sort();
@@ -921,9 +1012,55 @@
             const endHour = parseInt(slots[slots.length - 1].split(':')[0]) + 1;
             const endTime = `${endHour.toString().padStart(2, '0')}:00`;
 
-            const reserveBtn = document.getElementById('reserveBtn');
-            reserveBtn.disabled = true;
-            reserveBtn.textContent = 'Creando reserva...';
+            // Save data for when user submits the name
+            _pendingSlots = { startTime, endTime };
+
+            // Build summary text
+            const resourceName = document.querySelector('[data-resource-name]')?.getAttribute('data-resource-name') || 'Fractalia';
+            const date = new Date(selectedDate + 'T00:00:00');
+            const dayName = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][date.getDay()];
+            const dayNum = date.getDate();
+            const month = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                           'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'][date.getMonth()];
+
+            document.getElementById('confirmSummary').innerHTML =
+                `<strong>${resourceName}</strong><br>${dayName} ${dayNum} de ${month} · ${startTime} a ${endTime}`;
+
+            // Reset name input
+            document.getElementById('confirmName').value = '';
+            document.getElementById('confirmNameError').textContent = '';
+            document.getElementById('confirmName').classList.remove('input-error');
+
+            // Show step 1, hide step 2
+            document.getElementById('confirmStep1').style.display = 'block';
+            document.getElementById('confirmStep2').style.display = 'none';
+            document.getElementById('confirmOverlay').classList.add('visible');
+
+            // Focus name input
+            setTimeout(() => document.getElementById('confirmName').focus(), 150);
+        }
+
+        // Step 2: Submit name → POST → show code
+        async function submitPendingBooking() {
+            const name = document.getElementById('confirmName').value.trim();
+            const nameInput = document.getElementById('confirmName');
+            const nameError = document.getElementById('confirmNameError');
+
+            if (!name) {
+                nameError.textContent = 'Por favor ingresá tu nombre.';
+                nameInput.classList.add('input-error');
+                nameInput.focus();
+                return;
+            }
+
+            nameError.textContent = '';
+            nameInput.classList.remove('input-error');
+
+            const submitBtn = document.getElementById('confirmSubmitBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Creando reserva...';
+
+            const { startTime, endTime } = _pendingSlots;
 
             try {
                 const response = await fetch(PENDING_BOOKING_ENDPOINT, {
@@ -937,6 +1074,7 @@
                         fecha: selectedDate,
                         start_time: startTime,
                         end_time: endTime,
+                        client_name: name,
                     }),
                 });
 
@@ -948,55 +1086,43 @@
                 const data = await response.json();
                 const code = data.code;
 
-                // Get resource name
+                // Build WhatsApp message with name
                 const resourceName = document.querySelector('[data-resource-name]')?.getAttribute('data-resource-name') || 'Fractalia';
-
-                // Format date
                 const date = new Date(selectedDate + 'T00:00:00');
                 const dayName = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][date.getDay()];
                 const dayNum = date.getDate();
                 const month = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
                                'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'][date.getMonth()];
+                const message = `Hola! Soy ${name}. Quiero reservar ${resourceName} el ${dayName} ${dayNum} de ${month} de ${startTime} a ${endTime}. Mi código de reserva es: ${code}`;
 
-                // Build WhatsApp message
-                const message = `Hola! Quiero reservar ${resourceName} el ${dayName} ${dayNum} de ${month} de ${startTime} a ${endTime}. Mi código de reserva es: ${code}`;
-
-                // Show confirmation modal with code
+                // Set step 2 content
                 const whatsappNumber = document.querySelector('[data-whatsapp]')?.getAttribute('data-whatsapp') || '';
-                showConfirmModal(code, message, whatsappNumber);
+                document.getElementById('confirmCode').textContent = code;
+                if (whatsappNumber) {
+                    document.getElementById('confirmWhatsappBtn').href =
+                        `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+                    document.getElementById('confirmCallBtn').href = `tel:${whatsappNumber}`;
+                }
+
+                // Switch to step 2
+                document.getElementById('confirmStep1').style.display = 'none';
+                document.getElementById('confirmStep2').style.display = 'block';
 
             } catch (error) {
                 console.error('Error:', error);
-                alert(`Error: ${error.message}`);
-                reserveBtn.disabled = false;
-                reserveBtn.textContent = 'Reservar';
+                document.getElementById('confirmNameError').textContent = `Error: ${error.message}`;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Confirmar pre-reserva';
             }
         }
 
-        // Show confirmation modal
-        function showConfirmModal(code, message, whatsappNumber) {
-            document.getElementById('confirmCode').textContent = code;
-
-            // Set WhatsApp button
-            if (whatsappNumber) {
-                const whatsappURL = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
-                document.getElementById('confirmWhatsappBtn').href = whatsappURL;
-            }
-
-            // Set Call button
-            if (whatsappNumber) {
-                document.getElementById('confirmCallBtn').href = `tel:${whatsappNumber}`;
-            }
-
-            // Show modal
-            document.getElementById('confirmOverlay').classList.add('visible');
-        }
-
-        // Close confirmation modal and clean up
+        // Close modal and clean up panel
         function closeConfirmModal() {
             document.getElementById('confirmOverlay').classList.remove('visible');
+            _pendingSlots = null;
 
-            // Reset button state
+            // Reset reserve button
             const reserveBtn = document.getElementById('reserveBtn');
             reserveBtn.disabled = false;
             reserveBtn.textContent = 'Reservar';
@@ -1038,20 +1164,29 @@
             `;
         }
 
-        // Event listener for reserve button
+        // Event listener for reserve button (opens modal step 1)
         document.getElementById('reserveBtn').addEventListener('click', handleReservation);
 
-        // Event listeners for confirmation modal
-        document.getElementById('confirmClose').addEventListener('click', closeConfirmModal);
+        // Step 1: Submit name button
+        document.getElementById('confirmSubmitBtn').addEventListener('click', submitPendingBooking);
 
-        // Close modal when clicking outside the modal box
-        document.getElementById('confirmOverlay').addEventListener('click', (e) => {
-            if (e.target.id === 'confirmOverlay') {
-                closeConfirmModal();
-            }
+        // Step 1: Submit on Enter key in name field
+        document.getElementById('confirmName').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') submitPendingBooking();
         });
 
-        // Close modal after clicking WhatsApp or Call button
+        // Step 1: Cancel button
+        document.getElementById('confirmCancel').addEventListener('click', closeConfirmModal);
+
+        // Step 2: Close button
+        document.getElementById('confirmClose').addEventListener('click', closeConfirmModal);
+
+        // Close modal when clicking the dark overlay
+        document.getElementById('confirmOverlay').addEventListener('click', (e) => {
+            if (e.target.id === 'confirmOverlay') closeConfirmModal();
+        });
+
+        // Step 2: Close modal after contacting
         document.getElementById('confirmWhatsappBtn').addEventListener('click', () => {
             setTimeout(closeConfirmModal, 500);
         });

@@ -1,5 +1,6 @@
 from django.contrib import admin, messages
 from django.utils import timezone
+from django.utils.safestring import mark_safe
 from datetime import datetime
 from .models import Resource, WeeklyAvailability, Booking, PendingBooking
 
@@ -50,14 +51,13 @@ class BookingAdmin(admin.ModelAdmin):
             'CANCELLED': 'red',
         }
         color = colors.get(obj.status, 'gray')
-        return f'<span style="color: {color}; font-weight: bold;">{obj.get_status_display()}</span>'
+        return mark_safe(f'<span style="color: {color}; font-weight: bold;">{obj.get_status_display()}</span>')
     status_display.short_description = 'Estado'
-    status_display.allow_tags = True
 
 
 @admin.register(PendingBooking)
 class PendingBookingAdmin(admin.ModelAdmin):
-    list_display = ('reservation_code', 'resource', 'date', 'start_time', 'end_time', 'status_badge', 'created_at')
+    list_display = ('reservation_code', 'client_name', 'resource', 'date', 'start_time', 'end_time', 'status_badge', 'created_at')
     list_filter = ('resource', 'status', 'date')
     search_fields = ('reservation_code',)
     readonly_fields = ('reservation_code', 'created_at')
@@ -71,9 +71,8 @@ class PendingBookingAdmin(admin.ModelAdmin):
             'REJECTED': 'red',
         }
         color = colors.get(obj.status, 'gray')
-        return f'<span style="color: {color}; font-weight: bold;">{obj.get_status_display()}</span>'
+        return mark_safe(f'<span style="color: {color}; font-weight: bold;">{obj.get_status_display()}</span>')
     status_badge.short_description = 'Estado'
-    status_badge.allow_tags = True
 
     def confirmar_reserva(self, request, queryset):
         confirmed_count = 0

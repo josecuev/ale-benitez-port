@@ -156,6 +156,7 @@ def create_pending_booking(request):
     fecha_str = data.get('fecha')
     start_time_str = data.get('start_time')
     end_time_str = data.get('end_time')
+    client_name = data.get('client_name', '').strip()
 
     if not all([resource_id, fecha_str, start_time_str, end_time_str]):
         return JsonResponse(
@@ -181,6 +182,7 @@ def create_pending_booking(request):
             start_time=start_time,
             end_time=end_time,
             reservation_code=code,
+            client_name=client_name,
             status='PENDING'
         )
 
