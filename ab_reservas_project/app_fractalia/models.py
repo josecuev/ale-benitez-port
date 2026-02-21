@@ -135,7 +135,7 @@ class PendingBooking(models.Model):
     STATUS_CHOICES = [
         ('PENDING', 'Pendiente'),
         ('CONFIRMED', 'Confirmada'),
-        ('REJECTED', 'Rechazada'),
+        # ('REJECTED', 'Rechazada'),
         ('CANCELLED', 'Cancelada'),
     ]
 
