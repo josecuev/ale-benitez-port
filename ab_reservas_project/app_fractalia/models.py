@@ -6,9 +6,9 @@ import string
 
 
 class Resource(models.Model):
-    name = models.CharField(max_length=200)
-    active = models.BooleanField(default=True)
-    whatsapp_number = models.CharField(max_length=30, help_text='Incluir código de país, e.g. 595981123456')
+    name = models.CharField(max_length=200, verbose_name='Nombre')
+    active = models.BooleanField(default=True, verbose_name='Activo')
+    whatsapp_number = models.CharField(max_length=30, verbose_name='WhatsApp', help_text='Incluir código de país, e.g. 595981123456')
 
     class Meta:
         verbose_name = 'Recurso'
@@ -16,7 +16,6 @@ class Resource(models.Model):
 
     def __str__(self):
         return self.name
-    
 
 
 
@@ -31,10 +30,10 @@ class WeeklyAvailability(models.Model):
         (6, 'Domingo'),
     ]
 
-    resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name='availability')
-    weekday = models.IntegerField(choices=WEEKDAY_CHOICES)
-    start_time = models.TimeField()
-    end_time = models.TimeField()
+    resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name='availability', verbose_name='Recurso')
+    weekday = models.IntegerField(choices=WEEKDAY_CHOICES, verbose_name='Día')
+    start_time = models.TimeField(verbose_name='Hora inicio')
+    end_time = models.TimeField(verbose_name='Hora fin')
 
     class Meta:
         verbose_name = 'Disponibilidad semanal'
@@ -51,12 +50,12 @@ class Booking(models.Model):
         ('CANCELLED', 'Cancelada'),
     ]
 
-    resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name='bookings')
-    start_datetime = models.DateTimeField()
-    end_datetime = models.DateTimeField()
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='CONFIRMED')
-    notes = models.TextField(blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name='bookings', verbose_name='Recurso')
+    start_datetime = models.DateTimeField(verbose_name='Inicio')
+    end_datetime = models.DateTimeField(verbose_name='Fin')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='CONFIRMED', verbose_name='Estado')
+    notes = models.TextField(blank=True, verbose_name='Notas')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Creada')
 
     class Meta:
         verbose_name = 'Reserva'
@@ -139,15 +138,15 @@ class PendingBooking(models.Model):
         ('CANCELLED', 'Cancelada'),
     ]
 
-    resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name='pending_bookings')
-    date = models.DateField()
-    start_time = models.TimeField()
-    end_time = models.TimeField()
-    reservation_code = models.CharField(max_length=4, unique=True)
-    client_name = models.CharField(max_length=100, blank=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
-    notes = models.TextField(blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name='pending_bookings', verbose_name='Recurso')
+    date = models.DateField(verbose_name='Fecha')
+    start_time = models.TimeField(verbose_name='Hora inicio')
+    end_time = models.TimeField(verbose_name='Hora fin')
+    reservation_code = models.CharField(max_length=4, unique=True, verbose_name='Código')
+    client_name = models.CharField(max_length=100, blank=True, verbose_name='Cliente')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING', verbose_name='Estado')
+    notes = models.TextField(blank=True, verbose_name='Notas')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Recibida')
 
     class Meta:
         verbose_name = 'Reserva pendiente'

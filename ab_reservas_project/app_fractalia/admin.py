@@ -22,6 +22,7 @@ class ResourceAdmin(admin.ModelAdmin):
 class WeeklyAvailabilityAdmin(admin.ModelAdmin):
     list_display = ('resource', 'weekday', 'start_time', 'end_time')
     list_filter = ('resource', 'weekday')
+    ordering = ('resource', 'weekday')
 
 
 @admin.register(Booking)
@@ -30,6 +31,8 @@ class BookingAdmin(admin.ModelAdmin):
     list_filter = ('resource', 'status', 'start_datetime')
     search_fields = ('resource__name', 'notes')
     readonly_fields = ('created_at',)
+    date_hierarchy = 'start_datetime'
+    ordering = ('start_datetime',)
     actions = ['cancelar', 'reactivar']
     fieldsets = (
         ('Información de la reserva', {
@@ -137,9 +140,10 @@ class PendingBookingAdmin(admin.ModelAdmin):
         'end_time', 'status_badge', 'created_at'
     )
     list_filter = ('resource', 'status', 'date')
-    search_fields = ('reservation_code',)
+    search_fields = ('reservation_code', 'client_name')
     readonly_fields = ('reservation_code', 'created_at')
     ordering = ('-created_at',)
+    date_hierarchy = 'date'
     actions = ['confirmar', 'deshacer']
 
     def status_badge(self, obj):
