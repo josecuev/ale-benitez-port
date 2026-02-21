@@ -200,3 +200,12 @@ SESSION_COOKIE_SECURE = not DEBUG
 # Permite que un admin logueado en admin.alejandrobenitez.com
 # sea reconocido también en fractalia.alejandrobenitez.com y links.alejandrobenitez.com
 SESSION_COOKIE_DOMAIN = os.environ.get('SESSION_COOKIE_DOMAIN', None)
+
+# PRODUCCIÓN: Traefik como reverse proxy
+# Traefik comunica con Django por HTTP internamente pero el cliente usa HTTPS
+# Estos headers le dicen a Django que confíe en Traefik sobre el protocolo real
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = False  # Traefik maneja HTTP → HTTPS
+    USE_X_FORWARDED_HOST = True
+    SECURE_TRUSTED_PROXIES = ['*']  # Confiar en la red Docker de Traefik
