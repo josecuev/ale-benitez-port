@@ -16,6 +16,7 @@ class Resource(models.Model):
 
     def __str__(self):
         return self.name
+    
 
 
 
@@ -91,27 +92,30 @@ class Booking(models.Model):
                     f'Ya existe una reserva confirmada que se superpone con este horario.'
                 )
 
-            # Validar que esté dentro de los horarios disponibles semanales
-            weekday = self.start_datetime.weekday()
-            availability = WeeklyAvailability.objects.filter(
-                resource=self.resource,
-                weekday=weekday
-            ).first()
+            # Solo validar horarios disponibles si es una reserva nueva (no tiene ID)
+            # Las reservas existentes ya fueron validadas en su creación
+            if not self.id:
+                # Validar que esté dentro de los horarios disponibles semanales
+                weekday = self.start_datetime.weekday()
+                availability = WeeklyAvailability.objects.filter(
+                    resource=self.resource,
+                    weekday=weekday
+                ).first()
 
-            if availability:
-                booking_start_time = self.start_datetime.time()
-                booking_end_time = self.end_datetime.time()
+                if availability:
+                    booking_start_time = self.start_datetime.time()
+                    booking_end_time = self.end_datetime.time()
 
-                if not (availability.start_time <= booking_start_time and booking_end_time <= availability.end_time):
+                    if not (availability.start_time <= booking_start_time and booking_end_time <= availability.end_time):
+                        raise ValidationError(
+                            f'El horario de la reserva está fuera del horario disponible '
+                            f'({availability.start_time} - {availability.end_time}).'
+                        )
+                else:
+                    day_name = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'][weekday]
                     raise ValidationError(
-                        f'El horario de la reserva está fuera del horario disponible '
-                        f'({availability.start_time} - {availability.end_time}).'
+                        f'No hay horario disponible definido para {day_name}.'
                     )
-            else:
-                day_name = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'][weekday]
-                raise ValidationError(
-                    f'No hay horario disponible definido para {day_name}.'
-                )
 
     def save(self, *args, **kwargs):
         self.full_clean()
