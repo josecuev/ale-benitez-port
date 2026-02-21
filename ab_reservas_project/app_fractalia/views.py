@@ -5,6 +5,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 from datetime import datetime, timedelta, time
 import json
+import re
 from .models import Resource, WeeklyAvailability, Booking, PendingBooking, generate_reservation_code
 
 
@@ -157,10 +158,18 @@ def create_pending_booking(request):
     start_time_str = data.get('start_time')
     end_time_str = data.get('end_time')
     client_name = data.get('client_name', '').strip()
+    client_phone = data.get('client_phone', '').strip()
 
     if not all([resource_id, fecha_str, start_time_str, end_time_str]):
         return JsonResponse(
             {'error': 'Parámetros requeridos: resource_id, fecha, start_time, end_time'},
+            status=400
+        )
+
+    # Validar formato de teléfono si se proporciona
+    if client_phone and not re.match(r'^09\d{8}$', client_phone):
+        return JsonResponse(
+            {'error': 'Formato de teléfono inválido. Debe ser 09XXXXXXXX'},
             status=400
         )
 
@@ -183,6 +192,7 @@ def create_pending_booking(request):
             end_time=end_time,
             reservation_code=code,
             client_name=client_name,
+            client_phone=client_phone,
             status='PENDING'
         )
 

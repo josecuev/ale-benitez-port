@@ -689,6 +689,21 @@
                     <div class="confirm-name-error" id="confirmNameError"></div>
                 </div>
 
+                <div class="confirm-name-group">
+                    <label class="confirm-name-label" for="confirmPhone">Tu teléfono</label>
+                    <input
+                        type="tel"
+                        id="confirmPhone"
+                        inputmode="numeric"
+                        pattern="09[0-9]{8}"
+                        placeholder="Ej: 0981234567"
+                        maxlength="10"
+                        autocomplete="tel"
+                        class="confirm-name-input"
+                    />
+                    <div class="confirm-name-error" id="confirmPhoneError"></div>
+                </div>
+
                 <button class="confirm-btn confirm-btn-whatsapp" id="confirmSubmitBtn">
                     Confirmar pre-reserva
                 </button>
@@ -1027,10 +1042,13 @@
             document.getElementById('confirmSummary').innerHTML =
                 `<strong>${resourceName}</strong><br>${dayName} ${dayNum} de ${month} · ${startTime} a ${endTime}`;
 
-            // Reset name input
+            // Reset name and phone inputs
             document.getElementById('confirmName').value = '';
+            document.getElementById('confirmPhone').value = '';
             document.getElementById('confirmNameError').textContent = '';
+            document.getElementById('confirmPhoneError').textContent = '';
             document.getElementById('confirmName').classList.remove('input-error');
+            document.getElementById('confirmPhone').classList.remove('input-error');
 
             // Show step 1, hide step 2
             document.getElementById('confirmStep1').style.display = 'block';
@@ -1041,12 +1059,16 @@
             setTimeout(() => document.getElementById('confirmName').focus(), 150);
         }
 
-        // Step 2: Submit name → POST → show code
+        // Step 2: Submit name and phone → POST → show code
         async function submitPendingBooking() {
             const name = document.getElementById('confirmName').value.trim();
+            const phone = document.getElementById('confirmPhone').value.trim();
             const nameInput = document.getElementById('confirmName');
+            const phoneInput = document.getElementById('confirmPhone');
             const nameError = document.getElementById('confirmNameError');
+            const phoneError = document.getElementById('confirmPhoneError');
 
+            // Validate name
             if (!name) {
                 nameError.textContent = 'Por favor ingresá tu nombre.';
                 nameInput.classList.add('input-error');
@@ -1056,6 +1078,18 @@
 
             nameError.textContent = '';
             nameInput.classList.remove('input-error');
+
+            // Validate phone format
+            const phoneRegex = /^09\d{8}$/;
+            if (!phoneRegex.test(phone)) {
+                phoneError.textContent = 'Ingresá un número válido (09XXXXXXXX)';
+                phoneInput.classList.add('input-error');
+                phoneInput.focus();
+                return;
+            }
+
+            phoneError.textContent = '';
+            phoneInput.classList.remove('input-error');
 
             const submitBtn = document.getElementById('confirmSubmitBtn');
             submitBtn.disabled = true;
@@ -1076,6 +1110,7 @@
                         start_time: startTime,
                         end_time: endTime,
                         client_name: name,
+                        client_phone: phone,
                     }),
                 });
 
@@ -1128,6 +1163,14 @@
             reserveBtn.disabled = false;
             reserveBtn.textContent = 'Reservar';
 
+            // Clean up form inputs
+            document.getElementById('confirmName').value = '';
+            document.getElementById('confirmPhone').value = '';
+            document.getElementById('confirmNameError').textContent = '';
+            document.getElementById('confirmPhoneError').textContent = '';
+            document.getElementById('confirmName').classList.remove('input-error');
+            document.getElementById('confirmPhone').classList.remove('input-error');
+
             // Clean up slot selection
             selectedSlots.clear();
             document.querySelectorAll('.time-slot.selected').forEach(el => el.classList.remove('selected'));
@@ -1171,8 +1214,12 @@
         // Step 1: Submit name button
         document.getElementById('confirmSubmitBtn').addEventListener('click', submitPendingBooking);
 
-        // Step 1: Submit on Enter key in name field
+        // Step 1: Submit on Enter key in name or phone field
         document.getElementById('confirmName').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') submitPendingBooking();
+        });
+
+        document.getElementById('confirmPhone').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') submitPendingBooking();
         });
 

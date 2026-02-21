@@ -55,6 +55,7 @@ class Booking(models.Model):
     end_datetime = models.DateTimeField(verbose_name='Fin')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='CONFIRMED', verbose_name='Estado')
     notes = models.TextField(blank=True, verbose_name='Notas')
+    client_phone = models.CharField(max_length=20, blank=True, default='', verbose_name='Teléfono del cliente')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Creada')
 
     class Meta:
@@ -144,6 +145,7 @@ class PendingBooking(models.Model):
     end_time = models.TimeField(verbose_name='Hora fin')
     reservation_code = models.CharField(max_length=4, unique=True, verbose_name='Código')
     client_name = models.CharField(max_length=100, blank=True, verbose_name='Cliente')
+    client_phone = models.CharField(max_length=20, blank=True, default='', verbose_name='Teléfono del cliente')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING', verbose_name='Estado')
     notes = models.TextField(blank=True, verbose_name='Notas')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Recibida')
