@@ -520,8 +520,9 @@
             color: #aaa;
             cursor: pointer;
             text-decoration: underline;
-            padding: 4px;
-            width: 100%;
+            padding: 8px 0;
+            display: block;
+            margin: 0 auto;
         }
 
         .confirm-close:hover {
@@ -706,9 +707,11 @@
                     <div class="confirm-name-error" id="confirmPhoneError"></div>
                 </div>
 
-                <button class="confirm-btn confirm-btn-whatsapp" id="confirmSubmitBtn">
-                    Confirmar pre-reserva
-                </button>
+                <div class="confirm-actions">
+                    <button class="confirm-btn confirm-btn-whatsapp" id="confirmSubmitBtn">
+                        Confirmar pre-reserva
+                    </button>
+                </div>
                 <button class="confirm-close" id="confirmCancel">Cancelar</button>
             </div>
 
