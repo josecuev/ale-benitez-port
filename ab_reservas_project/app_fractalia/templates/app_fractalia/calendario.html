@@ -49,6 +49,44 @@
             letter-spacing: 1px;
         }
 
+        /* Resource radio buttons (inside modal) */
+        .resource-radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .resource-radio-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 11px 14px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-size: 15px;
+        }
+
+        .resource-radio-option:hover {
+            border-color: #ffe927;
+            background-color: #faf5e4;
+        }
+
+        .resource-radio-option.selected {
+            border-color: #ffe927;
+            background-color: #ffe927;
+            font-weight: 600;
+        }
+
+        .resource-radio-option input[type="radio"] {
+            accent-color: #000;
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+
         .main-container {
             flex: 1;
             min-height: 0;
@@ -680,6 +718,14 @@
                 <div class="confirm-summary" id="confirmSummary"></div>
 
                 <div class="confirm-name-group">
+                    <label class="confirm-name-label">¿Qué queres alquilar?</label>
+                    <div class="resource-radio-group" id="resourceRadioGroup">
+                        <!-- Populated by JS -->
+                    </div>
+                    <div class="confirm-name-error" id="confirmResourceError"></div>
+                </div>
+
+                <div class="confirm-name-group">
                     <label class="confirm-name-label" for="confirmName">Tu nombre</label>
                     <input
                         class="confirm-name-input"
@@ -752,7 +798,15 @@
         const API_ENDPOINT = '{% url "fractalia_disponibilidad_api" %}';
         const DIAS_API_ENDPOINT = '{% url "fractalia_dias_disponibilidad_api" %}';
         const PENDING_BOOKING_ENDPOINT = '{% url "fractalia_create_pending_booking" %}';
-        const RESOURCE_ID = {{ resources.first.id|default:'null' }};
+        const RESOURCES = [
+            {% for r in resources %}
+            { id: {{ r.id }}, name: "{{ r.name }}", whatsapp: "{{ r.whatsapp_number }}" }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
+
+        let currentResourceId = RESOURCES.length > 0 ? RESOURCES[0].id : null;
+        let currentResourceName = RESOURCES.length > 0 ? RESOURCES[0].name : '';
+        let currentResourceWhatsapp = RESOURCES.length > 0 ? RESOURCES[0].whatsapp : '';
 
         let selectedDate = null;
         let selectedSlots = new Set();
@@ -816,7 +870,7 @@
             loadingBatch = true;
 
             const fromDateStr = fromDate ? fromDate.toISOString().split('T')[0] : undefined;
-            let url = `${DIAS_API_ENDPOINT}?resource_id=${RESOURCE_ID}&days=${batchSize}`;
+            let url = `${DIAS_API_ENDPOINT}?resource_id=${currentResourceId}&days=${batchSize}`;
             if (fromDateStr) url += `&from_date=${fromDateStr}`;
 
             return fetch(url)
@@ -905,7 +959,7 @@
 
         // Load slots for selected day
         function loadSlots(dateStr) {
-            if (!RESOURCE_ID) {
+            if (!currentResourceId) {
                 showEmptyState('No hay recursos disponibles');
                 return;
             }
@@ -913,7 +967,7 @@
             const slotsList = document.getElementById('slotsList');
             slotsList.innerHTML = '<div class="loading">Cargando horarios...</div>';
 
-            fetch(`${API_ENDPOINT}?fecha=${dateStr}&resource_id=${RESOURCE_ID}`)
+            fetch(`${API_ENDPOINT}?fecha=${dateStr}&resource_id=${currentResourceId}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.error) {
@@ -1036,8 +1090,11 @@
             // Save data for when user submits the name
             _pendingSlots = { startTime, endTime };
 
+            // Initialize resource radio buttons
+            initResourceRadios();
+
             // Build summary text
-            const resourceName = document.querySelector('[data-resource-name]')?.getAttribute('data-resource-name') || 'Fractalia';
+            const resourceName = RESOURCES.length > 0 ? RESOURCES[0].name : 'Fractalia';
             const date = new Date(selectedDate + 'T00:00:00');
             const dayName = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][date.getDay()];
             const dayNum = date.getDate();
@@ -1045,7 +1102,7 @@
                            'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'][date.getMonth()];
 
             document.getElementById('confirmSummary').innerHTML =
-                `<strong>${resourceName}</strong><br>${dayName} ${dayNum} de ${month} · ${startTime} a ${endTime}`;
+                `${dayName} ${dayNum} de ${month} · ${startTime} a ${endTime}`;
 
             // Reset name and phone inputs
             document.getElementById('confirmName').value = '';
@@ -1096,6 +1153,15 @@
             phoneError.textContent = '';
             phoneInput.classList.remove('input-error');
 
+            // Validate resource selection
+            const resource = getSelectedResource();
+            const resourceError = document.getElementById('confirmResourceError');
+            if (!resource) {
+                resourceError.textContent = 'Por favor seleccioná un recurso.';
+                return;
+            }
+            resourceError.textContent = '';
+
             const submitBtn = document.getElementById('confirmSubmitBtn');
             submitBtn.disabled = true;
             submitBtn.textContent = 'Creando reserva...';
@@ -1110,7 +1176,7 @@
                         'X-CSRFToken': getCookie('csrftoken'),
                     },
                     body: JSON.stringify({
-                        resource_id: RESOURCE_ID,
+                        resource_id: resource.id,
                         fecha: selectedDate,
                         start_time: startTime,
                         end_time: endTime,
@@ -1128,7 +1194,7 @@
                 const code = data.code;
 
                 // Build WhatsApp message with name
-                const resourceName = document.querySelector('[data-resource-name]')?.getAttribute('data-resource-name') || 'Fractalia';
+                const resourceName = resource.name;
                 const date = new Date(selectedDate + 'T00:00:00');
                 const dayName = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][date.getDay()];
                 const dayNum = date.getDate();
@@ -1137,7 +1203,7 @@
                 const message = `Hola! Soy ${name}. Quiero reservar ${resourceName} el ${dayName} ${dayNum} de ${month} de ${startTime} a ${endTime}. Mi código de reserva es: ${code}`;
 
                 // Set step 2 content
-                const whatsappNumber = document.querySelector('[data-whatsapp]')?.getAttribute('data-whatsapp') || '';
+                const whatsappNumber = resource.whatsapp || '';
                 document.getElementById('confirmCode').textContent = code;
                 if (whatsappNumber) {
                     document.getElementById('confirmWhatsappBtn').href =
@@ -1248,16 +1314,45 @@
             setTimeout(closeConfirmModal, 500);
         });
 
+        // Populate resource radio buttons inside the modal
+        function initResourceRadios() {
+            const container = document.getElementById('resourceRadioGroup');
+            container.innerHTML = '';
+            RESOURCES.forEach((resource, index) => {
+                const label = document.createElement('label');
+                label.className = 'resource-radio-option' + (index === 0 ? ' selected' : '');
+
+                const input = document.createElement('input');
+                input.type = 'radio';
+                input.name = 'selectedResource';
+                input.value = resource.id;
+                input.checked = index === 0;
+
+                input.addEventListener('change', () => {
+                    container.querySelectorAll('.resource-radio-option').forEach(l => l.classList.remove('selected'));
+                    label.classList.add('selected');
+                });
+
+                label.appendChild(input);
+                label.appendChild(document.createTextNode(resource.name));
+                container.appendChild(label);
+            });
+        }
+
+        // Get selected resource from modal radio buttons
+        function getSelectedResource() {
+            const checked = document.querySelector('input[name="selectedResource"]:checked');
+            if (!checked) return null;
+            return RESOURCES.find(r => r.id == checked.value) || null;
+        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
-            if (RESOURCE_ID) {
+            if (currentResourceId) {
                 loadDaysBatch(null, BATCH_SIZE);
             }
         });
     </script>
 
-    {% if resources.first %}
-        <div data-whatsapp="{{ resources.first.whatsapp_number }}" data-resource-name="{{ resources.first.name }}" style="display:none;"></div>
-    {% endif %}
 </body>
 </html>

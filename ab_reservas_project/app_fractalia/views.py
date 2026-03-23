@@ -44,8 +44,8 @@ def _get_slots_for_date(resource, fecha):
         slot_start_datetime = datetime.combine(fecha, slot_start_time)
         slot_end_datetime = datetime.combine(fecha, slot_end_time)
 
+        # Check across ALL resources — only one resource can be booked at a time
         overlapping_booking = Booking.objects.filter(
-            resource=resource,
             status='CONFIRMED',
             start_datetime__lt=slot_end_datetime,
             end_datetime__gt=slot_start_datetime
