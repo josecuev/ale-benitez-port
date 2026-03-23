@@ -1,0 +1,8 @@
+{% extends "admin/base.html" %}
+{% load i18n %}
+
+{% block userlinks %}
+  <a href="{% url 'admin:analytics_dashboard' %}" title="Ver dashboard de analytics"
+     style="font-weight:700; color:#ffe927;">📊 Analytics</a> /
+  {{ block.super }}
+{% endblock %}

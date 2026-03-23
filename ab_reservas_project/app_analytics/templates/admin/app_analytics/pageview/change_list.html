@@ -1,0 +1,12 @@
+{% extends "admin/change_list.html" %}
+
+{% block object-tools-items %}
+  <li>
+    <a href="{% url 'admin:analytics_dashboard' %}"
+       class="addlink"
+       style="background-color: #ffe927; color: #333; font-weight: 700;">
+      📊 Ver Dashboard de Analytics
+    </a>
+  </li>
+  {{ block.super }}
+{% endblock %}

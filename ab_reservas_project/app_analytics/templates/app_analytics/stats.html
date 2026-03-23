@@ -1,0 +1,671 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}Analytics — {{ site_title }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  .analytics-wrap { padding: 0 0 56px; }
+
+  /* ── Tabs ── */
+  .tab-bar { display:flex; gap:0; border-bottom:2px solid #e8e8e8; margin-bottom:28px; }
+  .tab-btn {
+    padding:11px 22px; font-size:13px; font-weight:700; letter-spacing:.04em;
+    background:none; border:none; border-bottom:3px solid transparent; margin-bottom:-2px;
+    cursor:pointer; color:#888; transition:color .15s, border-color .15s;
+  }
+  .tab-btn.active { color:#1a1a1a; border-bottom-color:#ffe927; }
+  .tab-btn:hover  { color:#333; }
+  .tab-panel { display:none; }
+  .tab-panel.active { display:block; }
+  .tab-badge {
+    display:inline-block; margin-left:6px; padding:1px 7px; border-radius:10px;
+    font-size:11px; font-weight:700; background:#e74c3c; color:#fff; vertical-align:middle;
+  }
+
+  /* ── Period selector ── */
+  .period-row {
+    display:flex; align-items:center; gap:10px; margin-bottom:22px;
+    padding:10px 14px; background:#f9f9f9; border-radius:8px; border:1px solid #efefef;
+  }
+  .period-row .period-label { font-size:12px; color:#888; margin-right:4px; }
+  .period-tab {
+    padding:4px 13px; border:1px solid #ddd; border-radius:16px;
+    font-size:12px; cursor:pointer; background:#fff; color:#555; text-decoration:none;
+  }
+  .period-tab.active { background:#ffe927; border-color:#ffe927; color:#333; font-weight:700; }
+
+  /* ── Section heading with description ── */
+  .section-head { margin:32px 0 14px; }
+  .section-head h2 {
+    font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.06em;
+    color:#222; margin:0 0 4px; padding-bottom:6px; border-bottom:2px solid #ffe927;
+    display:inline-block;
+  }
+  .section-head p { font-size:12px; color:#888; margin:6px 0 0; }
+
+  /* ── KPI grid ── */
+  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(155px,1fr)); gap:14px; margin-bottom:24px; }
+  .kpi {
+    background:#fff; border:1px solid #e8e8e8; border-radius:8px; padding:16px 14px 14px;
+    display:flex; flex-direction:column;
+  }
+  .kpi__icon  { font-size:18px; margin-bottom:6px; line-height:1; }
+  .kpi__value { font-size:28px; font-weight:800; color:#1a1a1a; line-height:1; margin-bottom:4px; }
+  .kpi__label { font-size:12px; font-weight:600; color:#333; margin-bottom:3px; }
+  .kpi__help  { font-size:11px; color:#aaa; line-height:1.4; }
+  .kpi.yellow { border-color:#ffe927; background:#fffde7; }
+  .kpi.yellow .kpi__value { color:#b8860b; }
+  .kpi.red    { border-color:#f5b7b1; background:#fff5f5; }
+  .kpi.red    .kpi__value { color:#c0392b; }
+  .kpi.orange { border-color:#f0b27a; background:#fff8f0; }
+  .kpi.orange .kpi__value { color:#d35400; }
+  .kpi.green  { border-color:#a9dfbf; background:#f0faf4; }
+  .kpi.green  .kpi__value { color:#1a7a3f; }
+  .kpi.blue   { border-color:#aed6f1; background:#f0f7ff; }
+  .kpi.blue   .kpi__value { color:#1a5276; }
+
+  /* ── Card wrapper ── */
+  .card { background:#fff; border:1px solid #e8e8e8; border-radius:8px; padding:22px; margin-bottom:18px; }
+  .card__title { font-size:13px; font-weight:700; color:#333; margin:0 0 4px; }
+  .card__desc  { font-size:12px; color:#999; margin:0 0 16px; }
+  .chart-box { position:relative; height:260px; }
+
+  /* ── Funnel ── */
+  .funnel-step { display:flex; align-items:center; gap:14px; margin-bottom:10px; }
+  .funnel-label { width:210px; font-size:13px; color:#444; }
+  .funnel-label small { display:block; font-size:11px; color:#aaa; margin-top:1px; }
+  .funnel-bar-wrap { flex:1; background:#f5f5f5; border-radius:4px; height:30px; overflow:hidden; }
+  .funnel-bar {
+    height:100%; border-radius:4px; display:flex; align-items:center; padding-left:10px;
+    font-size:12px; font-weight:600; color:#fff; white-space:nowrap; min-width:32px; transition:width 1s ease;
+  }
+  .funnel-count { width:44px; text-align:right; font-weight:800; font-size:15px; color:#1a1a1a; }
+  .funnel-pct   { width:60px; text-align:right; }
+  .funnel-arrow { font-size:10px; color:#ccc; margin:-2px 0; padding-left:6px; }
+  .funnel-note  { margin-top:14px; padding:10px 14px; background:#fffde7; border-radius:6px; border:1px solid #ffe927; font-size:12px; color:#7d6608; }
+
+  /* ── Data table ── */
+  .data-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .data-table th {
+    background:#f9f9f9; padding:8px 12px; text-align:left;
+    font-size:11px; text-transform:uppercase; letter-spacing:.05em;
+    color:#888; border-bottom:2px solid #e8e8e8;
+  }
+  .data-table th .th-help { display:block; font-size:10px; color:#bbb; font-weight:400; text-transform:none; letter-spacing:0; }
+  .data-table td { padding:7px 12px; border-bottom:1px solid #f2f2f2; color:#333; }
+  .data-table tr:hover td { background:#fafafa; }
+  .data-table td.num  { text-align:right; font-variant-numeric:tabular-nums; }
+  .data-table td.hl   { color:#b8860b; font-weight:600; }
+  .data-table td.zero { color:#ddd; }
+  .sparkbar { display:inline-block; height:8px; background:#ffe927; border-radius:2px; min-width:2px; vertical-align:middle; margin-right:4px; }
+
+  /* ── Badge ── */
+  .badge { display:inline-block; padding:2px 7px; border-radius:10px; font-size:11px; font-weight:600; }
+  .badge-green  { background:#e6f9ed; color:#1a7a3f; }
+  .badge-yellow { background:#fffde7; color:#b8860b; }
+  .badge-red    { background:#fff0f0; color:#c0392b; }
+  .badge-gray   { background:#f0f0f0; color:#888; }
+
+  /* ── Alert blocks ── */
+  .alert-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:24px; }
+  .alert-block { border-radius:10px; padding:20px; border:2px solid; }
+  .alert-block__status { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; margin-bottom:8px; }
+  .alert-block__count  { font-size:40px; font-weight:900; line-height:1; margin-bottom:6px; }
+  .alert-block__title  { font-size:13px; font-weight:600; color:#444; margin-bottom:4px; }
+  .alert-block__desc   { font-size:11px; color:#777; line-height:1.5; }
+  .alert-block__list   { margin-top:10px; padding-top:8px; border-top:1px solid rgba(0,0,0,.08); }
+  .alert-block__item   { font-size:11px; margin-bottom:3px; }
+
+  /* ── Day pills ── */
+  .pills-legend { display:flex; gap:16px; font-size:11px; color:#888; margin-bottom:12px; }
+  .pills-legend span { display:flex; align-items:center; gap:5px; }
+  .legend-dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+  .pills-wrap { display:flex; gap:8px; flex-wrap:wrap; }
+  .pill {
+    width:58px; border:1px solid #e8e8e8; border-radius:8px; padding:8px 4px 6px;
+    text-align:center; cursor:pointer; background:#fff; transition:box-shadow .15s,border-color .15s;
+    user-select:none;
+  }
+  .pill:hover { border-color:#ffe927; box-shadow:0 2px 8px rgba(0,0,0,.08); }
+  .pill.today { border-color:#3b82f6; background:#eff6ff; }
+  .pill.has-pending { border-color:#e67e22; }
+  .pill.all-clear { border-color:#a9dfbf; background:#f0faf4; }
+  .pill__dow  { font-size:10px; text-transform:uppercase; color:#aaa; letter-spacing:.04em; }
+  .pill__date { font-size:15px; font-weight:700; color:#1a1a1a; margin:2px 0; }
+  .pill__p    { font-size:10px; font-weight:700; color:#e67e22; }
+  .pill__c    { font-size:10px; color:#27ae60; font-weight:600; }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.45);
+    z-index:9999; align-items:center; justify-content:center;
+  }
+  .modal-overlay.open { display:flex; }
+  .modal-box {
+    background:#fff; border-radius:12px; padding:26px 28px 22px; width:90%; max-width:480px;
+    box-shadow:0 24px 64px rgba(0,0,0,.25); position:relative; max-height:80vh; overflow-y:auto;
+  }
+  .modal-close { position:absolute; top:12px; right:14px; background:none; border:none; font-size:20px; cursor:pointer; color:#aaa; }
+  .modal-title { font-size:15px; font-weight:700; color:#1a1a1a; margin-bottom:4px; }
+  .modal-subtitle { font-size:12px; color:#888; margin-bottom:16px; }
+  .modal-booking {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:10px 12px; border-radius:6px; margin-bottom:6px;
+    background:#f9f9f9; border:1px solid #efefef;
+  }
+  .modal-booking .time   { font-size:13px; font-weight:700; color:#333; }
+  .modal-booking .client { font-size:12px; color:#666; margin-top:2px; }
+  .modal-empty { color:#aaa; font-size:13px; padding:12px 0; text-align:center; }
+</style>
+{% endblock %}
+
+{% block content_title %}<h1>Panel de Analytics</h1>{% endblock %}
+
+{% block content %}
+<div class="analytics-wrap">
+
+  {# ── TABS ── #}
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('funnel', this)">
+      📊 Visitas &amp; Conversión
+    </button>
+    <button class="tab-btn" onclick="switchTab('prereservas', this)">
+      📋 Pre-reservas
+      {% if unmanaged_expired or unmanaged_active %}
+        <span class="tab-badge">{{ unmanaged_expired|length|add:unmanaged_active|length }}</span>
+      {% endif %}
+    </button>
+  </div>
+
+  {# ════════════════ TAB 1: FUNNEL ════════════════ #}
+  <div id="tab-funnel" class="tab-panel active">
+
+    <div class="period-row">
+      <span class="period-label">Mostrando los últimos</span>
+      <a href="?days=7"  class="period-tab {% if days_range == 7  %}active{% endif %}">7 días</a>
+      <a href="?days=30" class="period-tab {% if days_range == 30 %}active{% endif %}">30 días</a>
+      <a href="?days=90" class="period-tab {% if days_range == 90 %}active{% endif %}">90 días</a>
+    </div>
+
+    {# KPIs de visitas #}
+    <div class="section-head">
+      <h2>Cuánta gente llegó</h2>
+      <p>Total de visitas recibidas en cada página durante los últimos {{ days_range }} días.</p>
+    </div>
+    <div class="kpi-grid">
+      <div class="kpi blue">
+        <div class="kpi__icon">🖼</div>
+        <div class="kpi__value">{{ totals.portfolio }}</div>
+        <div class="kpi__label">Portfolio</div>
+        <div class="kpi__help">Visitas a la galería de fotos (alejandrobenitez.com)</div>
+      </div>
+      <div class="kpi blue">
+        <div class="kpi__icon">🔗</div>
+        <div class="kpi__value">{{ totals.links }}</div>
+        <div class="kpi__label">Links</div>
+        <div class="kpi__help">Visitas a la página de links (links.alejandrobenitez.com)</div>
+      </div>
+      <div class="kpi blue">
+        <div class="kpi__icon">📅</div>
+        <div class="kpi__value">{{ totals.calendar }}</div>
+        <div class="kpi__label">Calendario</div>
+        <div class="kpi__help">Visitas al calendario de disponibilidad de Fractalia</div>
+      </div>
+      <div class="kpi yellow">
+        <div class="kpi__icon">📩</div>
+        <div class="kpi__value">{{ totals.pending }}</div>
+        <div class="kpi__label">Pre-reservas recibidas</div>
+        <div class="kpi__help">Clientes que completaron el formulario de pre-reserva</div>
+      </div>
+      <div class="kpi green">
+        <div class="kpi__icon">✅</div>
+        <div class="kpi__value">{{ totals.confirmed }}</div>
+        <div class="kpi__label">Reservas confirmadas</div>
+        <div class="kpi__help">Pre-reservas que se convirtieron en turnos reales</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi__icon">👤</div>
+        <div class="kpi__value">{{ totals.unique_visitors }}</div>
+        <div class="kpi__label">Visitantes únicos</div>
+        <div class="kpi__help">IPs distintas — aproxima cuántas personas diferentes visitaron</div>
+      </div>
+    </div>
+
+    {# Funnel #}
+    <div class="section-head">
+      <h2>Funnel de conversión</h2>
+      <p>¿Cuántos de los que visitan terminan reservando? Cada paso muestra qué porcentaje avanzó al siguiente.</p>
+    </div>
+    <div class="card">
+      {% for step in funnel %}
+      <div class="funnel-step">
+        <div class="funnel-label">
+          {{ step.label }}
+          <small>{{ step.description }}</small>
+        </div>
+        <div class="funnel-bar-wrap">
+          <div class="funnel-bar" style="width:{{ step.pct_of_top }}%; background:{{ step.color }};">
+            {% if step.pct_of_top > 15 %}{{ step.count }}{% endif %}
+          </div>
+        </div>
+        <div class="funnel-count">{{ step.count }}</div>
+        <div class="funnel-pct">
+          {% if not forloop.first %}
+            <span class="badge {% if step.pct_of_prev > 30 %}badge-green{% elif step.pct_of_prev > 10 %}badge-yellow{% else %}badge-red{% endif %}"
+                  title="{{ step.pct_of_prev }}% de los del paso anterior llegaron hasta acá">
+              {{ step.pct_of_prev }}%
+            </span>
+          {% endif %}
+        </div>
+      </div>
+      {% if not forloop.last %}<div class="funnel-arrow">▼</div>{% endif %}
+      {% endfor %}
+      <div class="funnel-note">
+        💡 De cada 100 personas que ven el calendario,
+        <strong>{{ totals.confirmed|default:0 }} de {{ totals.calendar|default:1 }}</strong>
+        terminan con una reserva confirmada
+        ({{ totals.calendar|default:1|divisibleby:1 }}
+        {% if totals.calendar > 0 %}
+          = {{ totals.confirmed }} confirmadas / {{ totals.calendar }} visitas al calendario
+        {% endif %}).
+      </div>
+    </div>
+
+    {# Gráfico visitas #}
+    <div class="section-head">
+      <h2>Visitas por día</h2>
+      <p>Evolución diaria de visitas a cada página. Útil para detectar picos después de publicaciones en redes.</p>
+    </div>
+    <div class="card">
+      <div class="chart-box"><canvas id="chartVisits"></canvas></div>
+    </div>
+
+    {# Gráfico reservas #}
+    <div class="section-head">
+      <h2>Actividad de reservas por día</h2>
+      <p>Cuántas pre-reservas se recibieron y cuántas se confirmaron cada día.</p>
+    </div>
+    <div class="card">
+      <div class="chart-box"><canvas id="chartBookings"></canvas></div>
+    </div>
+
+    {# Tabla detalle #}
+    <div class="section-head">
+      <h2>Tabla de detalle diario</h2>
+      <p>Todos los números día por día. Las barras amarillas indican el volumen relativo de visitas al portfolio.</p>
+    </div>
+    <div class="card" style="padding:0; overflow:hidden;">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th style="text-align:right">Portfolio<span class="th-help">galería</span></th>
+            <th style="text-align:right">Links<span class="th-help">bio link</span></th>
+            <th style="text-align:right">Calendario<span class="th-help">fractalia</span></th>
+            <th style="text-align:right">Pre-reservas<span class="th-help">recibidas</span></th>
+            <th style="text-align:right">Confirmadas<span class="th-help">convertidas</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for day in days %}
+          <tr>
+            <td style="font-weight:500; color:#555;">{{ day.date|date:"D d/m" }}</td>
+            <td class="num {% if day.portfolio == 0 %}zero{% endif %}">
+              {% if day.portfolio %}<span class="sparkbar" style="width:{{ day.portfolio_bar }}px"></span>{{ day.portfolio }}{% else %}—{% endif %}
+            </td>
+            <td class="num {% if day.links == 0 %}zero{% endif %}">{% if day.links %}{{ day.links }}{% else %}—{% endif %}</td>
+            <td class="num {% if day.calendar == 0 %}zero{% endif %}">{% if day.calendar %}{{ day.calendar }}{% else %}—{% endif %}</td>
+            <td class="num {% if day.pending %}hl{% else %}zero{% endif %}">{% if day.pending %}{{ day.pending }}{% else %}—{% endif %}</td>
+            <td class="num {% if day.confirmed %}hl{% else %}zero{% endif %}">{% if day.confirmed %}{{ day.confirmed }}{% else %}—{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {# Histórico mensual #}
+    {% if monthly %}
+    <div class="section-head">
+      <h2>Histórico mensual</h2>
+      <p>Visitas totales agrupadas por mes. Los datos más viejos de 90 días se consolidan aquí automáticamente.</p>
+    </div>
+    <div class="card">
+      <div class="chart-box"><canvas id="chartMonthly"></canvas></div>
+    </div>
+    {% endif %}
+
+  </div>{# /tab-funnel #}
+
+  {# ════════════════ TAB 2: PRE-RESERVAS ════════════════ #}
+  <div id="tab-prereservas" class="tab-panel">
+
+    <div class="period-row">
+      <span class="period-label">Métricas de los últimos</span>
+      <a href="?days=7&tab=prereservas"  class="period-tab {% if days_range == 7  %}active{% endif %}">7 días</a>
+      <a href="?days=30&tab=prereservas" class="period-tab {% if days_range == 30 %}active{% endif %}">30 días</a>
+      <a href="?days=90&tab=prereservas" class="period-tab {% if days_range == 90 %}active{% endif %}">90 días</a>
+    </div>
+
+    {# Alertas de gestión #}
+    <div class="section-head">
+      <h2>Estado actual — requiere acción</h2>
+      <p>Situación en tiempo real, independiente del período seleccionado arriba.</p>
+    </div>
+    <div class="alert-grid">
+
+      <div class="alert-block" style="background:{% if unmanaged_expired %}#fff0f0{% else %}#f0faf4{% endif %}; border-color:{% if unmanaged_expired %}#e74c3c{% else %}#27ae60{% endif %};">
+        <div class="alert-block__status" style="color:{% if unmanaged_expired %}#c0392b{% else %}#1a7a3f{% endif %};">
+          {% if unmanaged_expired %}⚠️ Acción urgente{% else %}✅ Todo gestionado{% endif %}
+        </div>
+        <div class="alert-block__count" style="color:{% if unmanaged_expired %}#c0392b{% else %}#1a7a3f{% endif %};">{{ unmanaged_expired|length }}</div>
+        <div class="alert-block__title">Turnos vencidos sin respuesta</div>
+        <div class="alert-block__desc">
+          {% if unmanaged_expired %}
+            El turno ya pasó y el cliente nunca recibió confirmación ni rechazo. Es tarde para gestionar el turno, pero el cliente merece una respuesta.
+          {% else %}
+            No quedaron pre-reservas sin atender del pasado. ¡Bien!
+          {% endif %}
+        </div>
+        {% if unmanaged_expired %}
+        <div class="alert-block__list">
+          {% for u in unmanaged_expired %}
+          <div class="alert-block__item" style="color:#c0392b;">
+            {{ u.obj.date|date:"d/m" }} {{ u.obj.start_time|time:"H:i" }} — {{ u.obj.client_name|default:"Sin nombre" }}
+            <span style="color:#aaa;">(hace {{ u.days_waiting }}d)</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="alert-block" style="background:{% if unmanaged_active %}#fff8f0{% else %}#f0faf4{% endif %}; border-color:{% if unmanaged_active %}#e67e22{% else %}#27ae60{% endif %};">
+        <div class="alert-block__status" style="color:{% if unmanaged_active %}#e67e22{% else %}#1a7a3f{% endif %};">
+          {% if unmanaged_active %}🕐 Pendiente de respuesta{% else %}✅ Todo al día{% endif %}
+        </div>
+        <div class="alert-block__count" style="color:{% if unmanaged_active %}#e67e22{% else %}#1a7a3f{% endif %};">{{ unmanaged_active|length }}</div>
+        <div class="alert-block__title">Pre-reservas activas sin confirmar</div>
+        <div class="alert-block__desc">
+          {% if unmanaged_active %}
+            El turno todavía no llegó. Todavía estás a tiempo de confirmar o rechazar y avisar al cliente.
+          {% else %}
+            No hay solicitudes esperando respuesta. ¡Todo al día!
+          {% endif %}
+        </div>
+        {% if unmanaged_active %}
+        <div class="alert-block__list">
+          {% for u in unmanaged_active %}
+          <div class="alert-block__item" style="color:#e67e22;">
+            {{ u.obj.date|date:"d/m" }} {{ u.obj.start_time|time:"H:i" }} — {{ u.obj.client_name|default:"Sin nombre" }}
+            <span style="color:#aaa;">(hace {{ u.hours_waiting }}h)</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="alert-block" style="background:{% if overlapping %}#fdf5ff{% else %}#f0faf4{% endif %}; border-color:{% if overlapping %}#8e44ad{% else %}#27ae60{% endif %};">
+        <div class="alert-block__status" style="color:{% if overlapping %}#6c3483{% else %}#1a7a3f{% endif %};">
+          {% if overlapping %}🔴 Conflicto de horario{% else %}✅ Sin conflictos{% endif %}
+        </div>
+        <div class="alert-block__count" style="color:{% if overlapping %}#6c3483{% else %}#1a7a3f{% endif %};">{{ overlapping|length }}</div>
+        <div class="alert-block__title">Pre-reservas que no se pueden confirmar</div>
+        <div class="alert-block__desc">
+          {% if overlapping %}
+            Estas pre-reservas piden un horario que ya está ocupado por una reserva confirmada. Si intentás confirmarlas va a fallar. Hay que avisar al cliente que ese horario no está disponible.
+          {% else %}
+            Ninguna pre-reserva activa choca con un turno ya confirmado.
+          {% endif %}
+        </div>
+        {% if overlapping %}
+        <div class="alert-block__list">
+          {% for o in overlapping %}
+          <div class="alert-block__item" style="color:#6c3483;">
+            {{ o.obj.date|date:"d/m" }} {{ o.obj.start_time|time:"H:i" }}–{{ o.obj.end_time|time:"H:i" }}
+            — <strong>{{ o.obj.client_name|default:"Sin nombre" }}</strong>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
+    </div>
+
+    {# Métricas del período #}
+    <div class="section-head">
+      <h2>Métricas del período</h2>
+      <p>Indicadores de eficiencia en la gestión de pre-reservas durante los últimos {{ days_range }} días.</p>
+    </div>
+    <div class="kpi-grid">
+      <div class="kpi yellow">
+        <div class="kpi__icon">📈</div>
+        <div class="kpi__value">{{ pending_conversion_rate }}%</div>
+        <div class="kpi__label">Tasa de confirmación</div>
+        <div class="kpi__help">De cada 100 pre-reservas recibidas, {{ pending_conversion_rate }} se confirmaron como turno real</div>
+      </div>
+      <div class="kpi {% if pending_expired_rate > 20 %}red{% else %}green{% endif %}">
+        <div class="kpi__icon">📉</div>
+        <div class="kpi__value">{{ pending_expired_rate }}%</div>
+        <div class="kpi__label">Tasa de abandono</div>
+        <div class="kpi__help">Pre-reservas que vencieron sin que se confirmaran ni rechazaran. Más del 20% es señal de alerta.</div>
+      </div>
+      {% if resp_avg %}
+      <div class="kpi blue">
+        <div class="kpi__icon">⏱</div>
+        <div class="kpi__value">{{ resp_avg }}h</div>
+        <div class="kpi__label">Tiempo de respuesta promedio</div>
+        <div class="kpi__help">Horas promedio entre que llega una pre-reserva y se confirma</div>
+      </div>
+      <div class="kpi green">
+        <div class="kpi__icon">🏃</div>
+        <div class="kpi__value">{{ resp_min }}h</div>
+        <div class="kpi__label">Respuesta más rápida</div>
+        <div class="kpi__help">La confirmación más veloz del período</div>
+      </div>
+      <div class="kpi {% if resp_max > 48 %}red{% else %}yellow{% endif %}">
+        <div class="kpi__icon">🐢</div>
+        <div class="kpi__value">{{ resp_max }}h</div>
+        <div class="kpi__label">Respuesta más lenta</div>
+        <div class="kpi__help">La confirmación más tardía. Más de 48h puede frustrar al cliente.</div>
+      </div>
+      {% endif %}
+    </div>
+
+    {# Gráfico apilado #}
+    <div class="section-head">
+      <h2>Qué pasó con cada pre-reserva recibida</h2>
+      <p>Cada barra muestra cuántas pre-reservas se confirmaron, cancelaron, vencieron sin respuesta, o siguen esperando — agrupadas por día en que fueron recibidas.</p>
+    </div>
+    <div class="card">
+      <div class="chart-box"><canvas id="chartPendingStatus"></canvas></div>
+    </div>
+
+    {# Próximos 15 días #}
+    <div class="section-head">
+      <h2>Próximos 15 días</h2>
+      <p>
+        Vista rápida de la agenda próxima.
+        <strong style="color:#e67e22;">Naranja</strong> = tiene pre-reservas pendientes de confirmar.
+        <strong style="color:#27ae60;">Verde</strong> = reservas ya confirmadas.
+        <strong style="color:#3b82f6;">Azul</strong> = hoy.
+        Hacé clic en cualquier día para ver el detalle.
+      </p>
+    </div>
+    <div class="card">
+      <div class="pills-wrap">
+        {% for d in upcoming_days %}
+        <div class="pill
+             {% if d.date == today %}today
+             {% elif d.pending_count %}has-pending
+             {% elif d.confirmed_count %}all-clear
+             {% endif %}"
+             onclick="openDayModal({{ forloop.counter0 }})"
+             title="Clic para ver detalle de {{ d.date|date:'d/m' }}">
+          <div class="pill__dow">{{ d.date|date:"D" }}</div>
+          <div class="pill__date">{{ d.date|date:"d/m" }}</div>
+          {% if d.pending_count %}<div class="pill__p">{{ d.pending_count }} pend.</div>{% endif %}
+          {% if d.confirmed_count %}<div class="pill__c">✓{{ d.confirmed_count }}</div>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>{# /tab-prereservas #}
+
+</div>{# /analytics-wrap #}
+
+{# ── MODAL DE DÍA ── #}
+<div id="dayModal" class="modal-overlay" onclick="if(event.target===this) closeDayModal()">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeDayModal()" title="Cerrar (Esc)">✕</button>
+    <div id="modalTitle" class="modal-title"></div>
+    <div id="modalSubtitle" class="modal-subtitle"></div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+{# ── DATOS Y JS ── #}
+<script>
+const DAYS = {{ chart_days_labels|safe }};
+const PORT = {{ chart_portfolio|safe }};
+const LINKS = {{ chart_links|safe }};
+const CAL  = {{ chart_calendar|safe }};
+const PEND = {{ chart_pending|safe }};
+const CONF = {{ chart_confirmed|safe }};
+const MONTH_LABELS     = {{ chart_month_labels|safe }};
+const MONTH_VIEWS      = {{ chart_month_views|safe }};
+const PEND_CONFIRMED   = {{ chart_pending_confirmed|safe }};
+const PEND_CANCELLED   = {{ chart_pending_cancelled|safe }};
+const PEND_EXPIRED     = {{ chart_pending_expired|safe }};
+const PEND_WAITING     = {{ chart_pending_waiting|safe }};
+const UPCOMING         = {{ upcoming_days_json|safe }};
+
+const BASE_OPTS = {
+  responsive: true, maintainAspectRatio: false,
+  plugins: {
+    legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12, padding: 16 } },
+    tooltip: { callbacks: { title: items => `${items[0].label}` } },
+  },
+};
+const X_AXIS = { ticks: { font: { size: 10 }, maxRotation: 45 } };
+const Y_ZERO = { beginAtZero: true, ticks: { stepSize: 1 } };
+
+// Visitas por día
+new Chart(document.getElementById('chartVisits'), {
+  type: 'line',
+  data: { labels: DAYS, datasets: [
+    { label: 'Portfolio (galería)',  data: PORT,  borderColor:'#3b82f6', backgroundColor:'#3b82f618', tension:.3, fill:true, pointRadius:3 },
+    { label: 'Links (bio)',          data: LINKS, borderColor:'#8b5cf6', backgroundColor:'#8b5cf618', tension:.3, fill:true, pointRadius:3 },
+    { label: 'Calendario Fractalia', data: CAL,   borderColor:'#f59e0b', backgroundColor:'#f59e0b18', tension:.3, fill:true, pointRadius:3 },
+  ]},
+  options: { ...BASE_OPTS, scales: { x: X_AXIS, y: Y_ZERO } },
+});
+
+// Actividad de reservas
+new Chart(document.getElementById('chartBookings'), {
+  type: 'bar',
+  data: { labels: DAYS, datasets: [
+    { label: 'Pre-reservas recibidas', data: PEND, backgroundColor: '#10b98188' },
+    { label: 'Reservas confirmadas',   data: CONF, backgroundColor: '#ffe927bb', borderColor: '#ffe927', borderWidth: 1 },
+  ]},
+  options: { ...BASE_OPTS, scales: { x: X_AXIS, y: Y_ZERO } },
+});
+
+// Histórico mensual
+{% if monthly %}
+new Chart(document.getElementById('chartMonthly'), {
+  type: 'bar',
+  data: { labels: MONTH_LABELS, datasets: [
+    { label: 'Visitas totales', data: MONTH_VIEWS, backgroundColor: '#ffe927aa', borderColor: '#ffe927', borderWidth: 1 },
+  ]},
+  options: { ...BASE_OPTS, plugins: { legend: { display: false } }, scales: { x: X_AXIS, y: { beginAtZero: true } } },
+});
+{% endif %}
+
+// Gestión de pre-reservas (stacked)
+new Chart(document.getElementById('chartPendingStatus'), {
+  type: 'bar',
+  data: { labels: DAYS, datasets: [
+    { label: 'Confirmadas (turno asignado)',       data: PEND_CONFIRMED, backgroundColor: '#27ae6088' },
+    { label: 'Canceladas (cliente o estudio)',     data: PEND_CANCELLED, backgroundColor: '#95a5a688' },
+    { label: 'Vencidas sin respuesta (ignoradas)', data: PEND_EXPIRED,   backgroundColor: '#e74c3c88' },
+    { label: 'Esperando respuesta (activas)',      data: PEND_WAITING,   backgroundColor: '#f39c1288' },
+  ]},
+  options: {
+    ...BASE_OPTS,
+    scales: {
+      x: { stacked: true, ...X_AXIS },
+      y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1 } },
+    },
+  },
+});
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+(function() {
+  if (new URLSearchParams(location.search).get('tab') === 'prereservas') {
+    switchTab('prereservas', document.querySelectorAll('.tab-btn')[1]);
+  }
+})();
+
+// ── Modal de día ──────────────────────────────────────────────────────────────
+function openDayModal(index) {
+  const d = UPCOMING[index];
+  document.getElementById('modalTitle').textContent = d.full_date;
+
+  const total = d.bookings.length + d.confirmed_count;
+  document.getElementById('modalSubtitle').textContent =
+    total === 0
+      ? 'Día sin actividad registrada.'
+      : `${d.bookings.length} pre-reserva${d.bookings.length !== 1 ? 's' : ''} pendiente${d.bookings.length !== 1 ? 's' : ''}` +
+        (d.confirmed_count ? ` · ${d.confirmed_count} confirmada${d.confirmed_count !== 1 ? 's' : ''}` : '');
+
+  let html = '';
+  if (d.bookings.length === 0 && d.confirmed_count === 0) {
+    html = '<p class="modal-empty">No hay pre-reservas ni reservas para este día.</p>';
+  } else {
+    if (d.bookings.length > 0) {
+      html += `<p style="font-size:11px; font-weight:700; text-transform:uppercase; color:#888; letter-spacing:.05em; margin:0 0 8px;">Pendientes de confirmar</p>`;
+      d.bookings.forEach(b => {
+        const waitText = b.hours_waiting < 24
+          ? `esperando ${b.hours_waiting}h`
+          : `esperando ${Math.floor(b.hours_waiting/24)}d`;
+        const overlapStyle = b.overlaps ? ' style="border-color:#8e44ad; background:#fdf5ff;"' : '';
+        const overlapNote  = b.overlaps
+          ? `<span style="display:block; font-size:10px; color:#6c3483; margin-top:2px;">⚠ Este horario ya tiene una reserva confirmada — no se puede confirmar</span>`
+          : '';
+        html += `
+          <div class="modal-booking"${overlapStyle}>
+            <div>
+              <div class="time">${b.start} – ${b.end}</div>
+              <div class="client">${b.client}${overlapNote}</div>
+            </div>
+            <span class="badge ${b.hours_waiting > 24 ? 'badge-red' : 'badge-yellow'}">${waitText}</span>
+          </div>`;
+      });
+    }
+    if (d.confirmed_count > 0) {
+      html += `<p style="font-size:12px; color:#27ae60; margin-top:12px; font-weight:600;">
+        ✓ ${d.confirmed_count} turno${d.confirmed_count > 1 ? 's' : ''} ya confirmado${d.confirmed_count > 1 ? 's' : ''} para este día.
+      </p>`;
+    }
+  }
+
+  document.getElementById('modalBody').innerHTML = html;
+  document.getElementById('dayModal').classList.add('open');
+}
+
+function closeDayModal() {
+  document.getElementById('dayModal').classList.remove('open');
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDayModal(); });
+</script>
+{% endblock %}

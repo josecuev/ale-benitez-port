@@ -14,6 +14,7 @@ urlpatterns = [
     path("", include("app_links.urls")),
     path("fractalia/", include("app_fractalia.urls")),
     path("", include("app_portfolio.urls")),
+    path("", include("app_analytics.urls")),
     path("admin/", admin.site.urls),
 ]
 
