@@ -3,8 +3,9 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { motion, LayoutGroup, AnimatePresence, useDragControls } from 'framer-motion'
 import AuthorIntro from './AuthorIntro' // Agregar esta importación
 
-interface PhotosJSON { photos: string[] }
+interface Photo { id: number; title: string; url: string; order: number }
 const PAGE_SIZE = 30
+const API_BASE = import.meta.env.VITE_API_URL ?? 'https://links.alejandrobenitez.com'
 
 const photoVariants = {
   hidden: { opacity: 0, y: 80 },
@@ -17,16 +18,16 @@ const nameVariants = {
 }
 
 export default function PhotoGallery() {
-  const [photos, setPhotos] = useState<string[]>([])
+  const [photos, setPhotos] = useState<Photo[]>([])
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const [expandedSrc, setExpandedSrc] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const dragControls = useDragControls()
 
   useEffect(() => {
-    fetch('/assets/photos.json')
+    fetch(`${API_BASE}/api/portfolio/fotos/`)
       .then(r => r.json())
-      .then((data: PhotosJSON) => setPhotos(data.photos))
+      .then((data: { fotos: Photo[] }) => setPhotos(data.fotos))
       .catch(console.error)
   }, [])
 
@@ -99,21 +100,21 @@ export default function PhotoGallery() {
             }
           `}</style>
 
-            {photos.slice(0, visibleCount).map((src, index) => (
+            {photos.slice(0, visibleCount).map((photo, index) => (
               <motion.div
-                key={src}
-                layoutId={src}
+                key={photo.url}
+                layoutId={photo.url}
                 className="relative w-full h-0 pb-[150%] overflow-hidden cursor-pointer touch-manipulation"
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true, amount: 0.3, margin: "100px" }}
                 variants={photoVariants}
-                onClick={() => setExpandedSrc(src)}
+                onClick={() => setExpandedSrc(photo.url)}
                 whileTap={{ scale: 0.98 }}
               >
                 <motion.img
-                  src={`/assets/${src}`}
-                  alt={`Foto ${index + 1}`}
+                  src={photo.url}
+                  alt={photo.title || `Foto ${index + 1}`}
                   loading="lazy"
                   className="absolute inset-0 w-full h-full object-cover select-none"
                   layout
@@ -171,7 +172,7 @@ export default function PhotoGallery() {
                 }}
               >
                 <motion.img
-                  src={`/assets/${expandedSrc}`}
+                  src={expandedSrc!}
                   alt="Imagen expandida"
                   className="max-w-full max-h-full object-contain select-none pointer-events-none"
                   layoutId={expandedSrc}
