@@ -794,7 +794,7 @@
     </div>
 
     <script>
-        const BATCH_SIZE = 30;
+        const BATCH_SIZE = 15;
         const API_ENDPOINT = '{% url "fractalia_disponibilidad_api" %}';
         const DIAS_API_ENDPOINT = '{% url "fractalia_dias_disponibilidad_api" %}';
         const PENDING_BOOKING_ENDPOINT = '{% url "fractalia_create_pending_booking" %}';
@@ -921,25 +921,6 @@
                 daysList.appendChild(btn);
             });
 
-            // Add sentinel for infinite scroll
-            if (daysLoaded === BATCH_SIZE) {
-                const sentinel = document.createElement('div');
-                sentinel.id = 'scroll-sentinel';
-                sentinel.style.width = '1px';
-                sentinel.style.height = '60px';
-                daysList.appendChild(sentinel);
-
-                const daysContainer = document.querySelector('.days-container');
-                const observer = new IntersectionObserver((entries) => {
-                    if (entries[0].isIntersecting && !loadingBatch) {
-                        loadDaysBatch(nextBatchDate, BATCH_SIZE).then(() => {
-                            // Sentinel moved to end, observer will trigger again
-                        });
-                    }
-                }, { root: daysContainer, threshold: 0.1 });
-
-                observer.observe(sentinel);
-            }
         }
 
         // Select a day
