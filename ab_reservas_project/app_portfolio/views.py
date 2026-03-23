@@ -11,6 +11,7 @@ def fotos_api(request):
             'id': p.id,
             'title': p.title,
             'url': request.build_absolute_uri(p.image.url),
+            'thumbnail_url': request.build_absolute_uri(p.thumbnail.url) if p.thumbnail else request.build_absolute_uri(p.image.url),
             'order': p.order,
         }
         for p in photos

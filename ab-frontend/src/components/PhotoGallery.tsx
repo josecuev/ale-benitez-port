@@ -3,8 +3,8 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { motion, LayoutGroup, AnimatePresence, useDragControls } from 'framer-motion'
 import AuthorIntro from './AuthorIntro' // Agregar esta importación
 
-interface Photo { id: number; title: string; url: string; order: number }
-const PAGE_SIZE = 30
+interface Photo { id: number; title: string; url: string; thumbnail_url: string; order: number }
+const PAGE_SIZE = 12
 const API_BASE = import.meta.env.VITE_API_URL ?? 'https://links.alejandrobenitez.com'
 
 const photoVariants = {
@@ -20,7 +20,7 @@ const nameVariants = {
 export default function PhotoGallery() {
   const [photos, setPhotos] = useState<Photo[]>([])
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
-  const [expandedSrc, setExpandedSrc] = useState<string | null>(null)
+  const [expandedPhoto, setExpandedPhoto] = useState<Photo | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const dragControls = useDragControls()
 
@@ -33,6 +33,7 @@ export default function PhotoGallery() {
 
   const loadMore = useCallback(() => {
     if (isLoading || visibleCount >= photos.length) return
+
     setIsLoading(true)
     setTimeout(() => {
       setVisibleCount(n => Math.min(photos.length, n + PAGE_SIZE))
@@ -43,7 +44,7 @@ export default function PhotoGallery() {
   // Scroll infinito mejorado
   useEffect(() => {
     const handleScroll = () => {
-      if (expandedSrc || isLoading || visibleCount >= photos.length) return
+      if (expandedPhoto || isLoading || visibleCount >= photos.length) return
 
       const scrollTop = window.pageYOffset || document.documentElement.scrollTop
       const windowHeight = window.innerHeight
@@ -59,14 +60,14 @@ export default function PhotoGallery() {
     window.addEventListener('scroll', throttledScroll, { passive: true })
 
     return () => window.removeEventListener('scroll', throttledScroll)
-  }, [expandedSrc, isLoading, visibleCount, photos.length, loadMore])
+  }, [expandedPhoto, isLoading, visibleCount, photos.length, loadMore])
 
   return (
     <>
       <AuthorIntro />
       <LayoutGroup>
         <div className="min-h-screen bg-black text-white flex flex-col overflow-x-hidden">
-          {!expandedSrc && (
+          {!expandedPhoto && (
             <header className="fixed top-0 z-20 w-full h-16 bg-[#FFF500] flex items-center px-8">
               <div className="flex-grow" />
               <motion.span
@@ -102,18 +103,18 @@ export default function PhotoGallery() {
 
             {photos.slice(0, visibleCount).map((photo, index) => (
               <motion.div
-                key={photo.url}
-                layoutId={photo.url}
+                key={photo.id}
+                layoutId={`photo-${photo.id}`}
                 className="relative w-full h-0 pb-[150%] overflow-hidden cursor-pointer touch-manipulation"
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true, amount: 0.3, margin: "100px" }}
                 variants={photoVariants}
-                onClick={() => setExpandedSrc(photo.url)}
+                onClick={() => setExpandedPhoto(photo)}
                 whileTap={{ scale: 0.98 }}
               >
                 <motion.img
-                  src={photo.url}
+                  src={photo.thumbnail_url}
                   alt={photo.title || `Foto ${index + 1}`}
                   loading="lazy"
                   className="absolute inset-0 w-full h-full object-cover select-none"
@@ -133,7 +134,7 @@ export default function PhotoGallery() {
           </div>
 
           {/* Botón manual (backup) */}
-          {visibleCount < photos.length && !expandedSrc && !isLoading && (
+          {visibleCount < photos.length && !expandedPhoto && !isLoading && (
             <div className="py-6 flex justify-center">
               <button
                 onClick={loadMore}
@@ -146,7 +147,7 @@ export default function PhotoGallery() {
           )}
 
           <AnimatePresence>
-            {expandedSrc && (
+            {expandedPhoto && (
               <motion.div
                 className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 touch-manipulation"
                 initial={{ opacity: 0 }}
@@ -167,15 +168,15 @@ export default function PhotoGallery() {
                     Math.abs(info.velocity.y) > velocity ||
                     Math.abs(info.velocity.x) > velocity
                   ) {
-                    setExpandedSrc(null)
+                    setExpandedPhoto(null)
                   }
                 }}
               >
                 <motion.img
-                  src={expandedSrc!}
-                  alt="Imagen expandida"
+                  src={expandedPhoto.url}
+                  alt={expandedPhoto.title || 'Imagen expandida'}
                   className="max-w-full max-h-full object-contain select-none pointer-events-none"
-                  layoutId={expandedSrc}
+                  layoutId={`photo-${expandedPhoto.id}`}
                   transition={{ type: 'spring', stiffness: 300, damping: 25 }}
                   draggable={false}
                 />
@@ -210,7 +211,7 @@ export default function PhotoGallery() {
 
                 <div
                   className="absolute inset-0 z-40 cursor-pointer"
-                  onClick={() => setExpandedSrc(null)}
+                  onClick={() => setExpandedPhoto(null)}
                 />
               </motion.div>
             )}
