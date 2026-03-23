@@ -2,3 +2,4 @@
 .env.prod
 
 staticfiles
+ab_reservas_project/media/

@@ -5,9 +5,11 @@ networks:
 volumes:
   pgdata:
     driver: local
+  media_data:
+    driver: local
 
 services:
-  ab-django:
+  django:
     build:
       context: ./ab_reservas_project
       dockerfile: Dockerfile
@@ -17,13 +19,27 @@ services:
       - traefik_public
     env_file:
       - ./ab_reservas_project/.env.prod
+    volumes:
+      - media_data:/app/media
     depends_on:
       db:
         condition: service_healthy
+
+  nginx:
+    image: nginx:alpine
+    container_name: ab-nginx
+    restart: unless-stopped
+    networks:
+      - traefik_public
+    volumes:
+      - ./nginx/nginx.backend.conf:/etc/nginx/conf.d/default.conf:ro
+      - media_data:/app/media:ro
+    depends_on:
+      - django
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=traefik_public"
-      - "traefik.http.services.django.loadbalancer.server.port=8000"
+      - "traefik.http.services.django.loadbalancer.server.port=80"
 
       # Middleware: redirect raíz → /fractalia/calendario/
       - "traefik.http.middlewares.fractalia-root-redirect.redirectregex.regex=^https://fractalia\\.alejandrobenitez\\.com/?$$"
@@ -34,7 +50,7 @@ services:
       - "traefik.http.middlewares.admin-root-redirect.redirectregex.replacement=https://admin.alejandrobenitez.com/admin/"
       - "traefik.http.middlewares.admin-root-redirect.redirectregex.permanent=true"
 
-      # Router: links.alejandrobenitez.com → / (app_links, sin middleware)
+      # Router: links.alejandrobenitez.com
       - "traefik.http.routers.django-links.rule=Host(`links.alejandrobenitez.com`)"
       - "traefik.http.routers.django-links.entrypoints=websecure"
       - "traefik.http.routers.django-links.tls=true"

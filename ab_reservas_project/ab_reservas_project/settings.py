@@ -51,6 +51,7 @@ INSTALLED_APPS = [
 
     'app_links',
     'app_fractalia',
+    'app_portfolio',
 ]
 
 MIDDLEWARE = [

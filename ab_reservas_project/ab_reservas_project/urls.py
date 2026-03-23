@@ -13,6 +13,7 @@ admin.site.index_title = "Administración del estudio"
 urlpatterns = [
     path("", include("app_links.urls")),
     path("fractalia/", include("app_fractalia.urls")),
+    path("", include("app_portfolio.urls")),
     path("admin/", admin.site.urls),
 ]
 
