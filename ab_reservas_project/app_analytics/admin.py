@@ -111,7 +111,11 @@ def _build_stats(days_range: int):
 
     # Datos para Chart.js (orden cronológico)
     chart_days = list(reversed(days))
-    chart_days_labels = [d['date'].strftime('%-d/%m') for d in chart_days]
+    _weekdays = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+    chart_days_labels = [
+        [_weekdays[d['date'].weekday()], d['date'].strftime('%-d/%m')]
+        for d in chart_days
+    ]
 
     return {
         'totals': totals,
@@ -179,6 +183,15 @@ class PageViewAdmin(admin.ModelAdmin):
             .order_by('date', 'start_time')
         )
 
+        def _waiting_label(hours):
+            if hours < 1:
+                mins = int(hours * 60)
+                return f'hace {mins} min'
+            if hours < 48:
+                return f'hace {int(hours)}h'
+            days = int(hours // 24)
+            return f'hace {days} días'
+
         unmanaged = []
         for pb in unmanaged_qs:
             booking_dt = timezone.make_aware(
@@ -191,6 +204,7 @@ class PageViewAdmin(admin.ModelAdmin):
                 'expired': expired,
                 'hours_waiting': round(hours_waiting, 1),
                 'days_waiting': int(hours_waiting // 24),
+                'waiting_label': _waiting_label(hours_waiting),
                 'admin_url': f'/admin/app_fractalia/pendingbooking/{pb.pk}/change/',
             })
 

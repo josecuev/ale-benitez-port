@@ -374,7 +374,7 @@
           {% for u in unmanaged_expired %}
           <div class="alert-block__item" style="color:#c0392b;">
             {{ u.obj.date|date:"d/m" }} {{ u.obj.start_time|time:"H:i" }} — {{ u.obj.client_name|default:"Sin nombre" }}
-            <span style="color:#aaa;">(hace {{ u.days_waiting }}d)</span>
+            <span style="color:#aaa;">({{ u.waiting_label }})</span>
           </div>
           {% endfor %}
         </div>
@@ -399,7 +399,7 @@
           {% for u in unmanaged_active %}
           <div class="alert-block__item" style="color:#e67e22;">
             {{ u.obj.date|date:"d/m" }} {{ u.obj.start_time|time:"H:i" }} — {{ u.obj.client_name|default:"Sin nombre" }}
-            <span style="color:#aaa;">(hace {{ u.hours_waiting }}h)</span>
+            <span style="color:#aaa;">({{ u.waiting_label }})</span>
           </div>
           {% endfor %}
         </div>
@@ -634,9 +634,12 @@ function openDayModal(index) {
     if (d.bookings.length > 0) {
       html += `<p style="font-size:11px; font-weight:700; text-transform:uppercase; color:#888; letter-spacing:.05em; margin:0 0 8px;">Pendientes de confirmar</p>`;
       d.bookings.forEach(b => {
-        const waitText = b.hours_waiting < 24
-          ? `esperando ${b.hours_waiting}h`
-          : `esperando ${Math.floor(b.hours_waiting/24)}d`;
+        const h = b.hours_waiting;
+        const waitText = h < 1
+          ? `hace ${Math.round(h*60)} min`
+          : h < 48
+            ? `hace ${Math.floor(h)}h`
+            : `hace ${Math.floor(h/24)} días`;
         const overlapStyle = b.overlaps ? ' style="border-color:#8e44ad; background:#fdf5ff;"' : '';
         const overlapNote  = b.overlaps
           ? `<span style="display:block; font-size:10px; color:#6c3483; margin-top:2px;">⚠ Este horario ya tiene una reserva confirmada — no se puede confirmar</span>`
@@ -647,7 +650,7 @@ function openDayModal(index) {
               <div class="time">${b.start} – ${b.end}</div>
               <div class="client">${b.client}${overlapNote}</div>
             </div>
-            <span class="badge ${b.hours_waiting > 24 ? 'badge-red' : 'badge-yellow'}">${waitText}</span>
+            <span class="badge ${h > 48 ? 'badge-red' : h > 24 ? 'badge-yellow' : 'badge-green'}">${waitText}</span>
           </div>`;
       });
     }
