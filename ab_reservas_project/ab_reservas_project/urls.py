@@ -5,6 +5,11 @@ from django.views.generic import RedirectView
 from django.conf import settings
 from django.conf.urls.static import static
 
+# ✅ Branding del admin
+admin.site.site_header = "Fractalia — Gestor de Reservas"
+admin.site.site_title = "Admin Fractalia"
+admin.site.index_title = "Administración del estudio"
+
 urlpatterns = [
     path("", include("app_links.urls")),
     path("fractalia/", include("app_fractalia.urls")),
