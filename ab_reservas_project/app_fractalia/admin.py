@@ -1,9 +1,34 @@
 from django.contrib import admin, messages
 from django.utils import timezone
 from django.utils.safestring import mark_safe
-from datetime import datetime
+from datetime import datetime, date as date_cls
 import re
 from .models import Resource, WeeklyAvailability, Booking, PendingBooking
+
+
+class EstadoGestionFilter(admin.SimpleListFilter):
+    """Filtro que replica los 3 paneles del dashboard de analytics."""
+    title = 'Estado de gestión'
+    parameter_name = 'gestion'
+
+    def lookups(self, request, model_admin):
+        return [
+            ('vencidas',    '⚠️  Vencidas sin respuesta'),
+            ('activas',     '🕐  Activas sin confirmar'),
+            ('confirmadas', '✅  Confirmadas'),
+            ('canceladas',  '❌  Canceladas'),
+        ]
+
+    def queryset(self, request, queryset):
+        today = date_cls.today()
+        if self.value() == 'vencidas':
+            return queryset.filter(status='PENDING', date__lt=today)
+        if self.value() == 'activas':
+            return queryset.filter(status='PENDING', date__gte=today)
+        if self.value() == 'confirmadas':
+            return queryset.filter(status='CONFIRMED')
+        if self.value() == 'canceladas':
+            return queryset.filter(status='CANCELLED')
 
 
 class WeeklyAvailabilityInline(admin.TabularInline):
@@ -227,13 +252,13 @@ class BookingAdmin(admin.ModelAdmin):
 @admin.register(PendingBooking)
 class PendingBookingAdmin(admin.ModelAdmin):
     list_display = (
-        'reservation_code', 'client_name', 'client_phone', 'resource', 'formatted_date', 'start_time',
-        'end_time', 'status_badge', 'whatsapp_link_list'
+        'estado_gestion', 'formatted_date', 'client_name',
+        'resource', 'recibida_hace', 'whatsapp_link_list',
     )
-    list_filter = ('resource', 'status', 'date')
+    list_filter = (EstadoGestionFilter, 'resource')
     search_fields = ('reservation_code', 'client_name', 'client_phone')
     readonly_fields = ('reservation_code', 'created_at', 'whatsapp_link_display')
-    ordering = ('-created_at',)
+    ordering = ('date', 'start_time')
     date_hierarchy = 'date'
     actions = ['confirmar', 'deshacer']
     fieldsets = (
@@ -267,16 +292,50 @@ class PendingBookingAdmin(admin.ModelAdmin):
         return formatted
     formatted_date.short_description = 'Fecha'
 
-    def status_badge(self, obj):
-        colors = {
-            'PENDING': 'orange',
-            'CONFIRMED': 'green',
-            'REJECTED': 'red',
-            'CANCELLED': 'red',
-        }
-        color = colors.get(obj.status, 'gray')
-        return mark_safe(f'<span style="color: {color}; font-weight: bold;">{obj.get_status_display()}</span>')
-    status_badge.short_description = 'Estado'
+    def estado_gestion(self, obj):
+        today = date_cls.today()
+        if obj.status == 'PENDING':
+            if obj.date < today:
+                return mark_safe(
+                    '<span style="color:#b91c1c; font-weight:700; font-size:12px;">'
+                    '⚠️ Vencida</span>'
+                )
+            else:
+                return mark_safe(
+                    '<span style="color:#c2410c; font-weight:700; font-size:12px;">'
+                    '🕐 Pendiente</span>'
+                )
+        elif obj.status == 'CONFIRMED':
+            return mark_safe(
+                '<span style="color:#15803d; font-weight:700; font-size:12px;">'
+                '✅ Confirmada</span>'
+            )
+        elif obj.status == 'CANCELLED':
+            return mark_safe(
+                '<span style="color:#6b7280; font-weight:700; font-size:12px;">'
+                '❌ Cancelada</span>'
+            )
+        return mark_safe(f'<span style="color:#888;">{obj.get_status_display()}</span>')
+    estado_gestion.short_description = 'Estado'
+
+    def recibida_hace(self, obj):
+        from django.utils import timezone as tz
+        delta = tz.now() - obj.created_at
+        hours = delta.total_seconds() / 3600
+        if hours < 1:
+            label = f'{int(delta.total_seconds() / 60)} min'
+        elif hours < 48:
+            label = f'{int(hours)}h'
+        else:
+            label = f'{int(hours / 24)} días'
+        if obj.status == 'PENDING' and obj.date < date_cls.today():
+            color = '#b91c1c'
+        elif obj.status == 'PENDING':
+            color = '#c2410c'
+        else:
+            color = '#9ca3af'
+        return mark_safe(f'<span style="color:{color}; font-size:12px;">hace {label}</span>')
+    recibida_hace.short_description = 'Recibida'
 
     def _build_whatsapp_url(self, obj):
         """Helper method to build WhatsApp URL with message"""
