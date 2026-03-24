@@ -364,8 +364,7 @@ class PendingBookingAdmin(admin.ModelAdmin):
     def horario(self, obj):
         return mark_safe(
             f'<span style="font-weight:700; font-size:13px; font-variant-numeric:tabular-nums;">'
-            f'{obj.start_time.strftime("%H:%M")}</span>'
-            f'<span style="color:#aaa; font-size:11px;"> – {obj.end_time.strftime("%H:%M")}</span>'
+            f'{obj.start_time.strftime("%H:%M")} – {obj.end_time.strftime("%H:%M")}</span>'
         )
     horario.short_description = 'Horario'
     horario.admin_order_field = 'start_time'
