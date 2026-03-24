@@ -354,7 +354,8 @@ class PageViewAdmin(admin.ModelAdmin):
         # ── Vista 2: agrupado por fecha del TURNO (pb.date) ──────────────────
         # Muestra qué días tienen turnos confirmados, pendientes, etc.
         # Solo pre-reservas dentro del período cuya fecha de turno también cae en el rango.
-        all_by_booking_date = PendingBooking.objects.filter(date__gte=start, date__lte=today + timedelta(days=14))
+        period_start = today - timedelta(days=days_range - 1)
+        all_by_booking_date = PendingBooking.objects.filter(date__gte=period_start, date__lte=today + timedelta(days=14))
 
         def _by_booking_date(status_filter):
             qs = (
@@ -378,7 +379,7 @@ class PageViewAdmin(admin.ModelAdmin):
 
         # Labels para eje X de vista 2: días del período + próximos 14 días
         _wd = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
-        booking_date_range = [start + timedelta(days=i) for i in range(days_range + 14)]
+        booking_date_range = [period_start + timedelta(days=i) for i in range(days_range + 14)]
         chart_booking_date_labels = [
             [_wd[d.weekday()], d.strftime('%-d/%m')] for d in booking_date_range
         ]
