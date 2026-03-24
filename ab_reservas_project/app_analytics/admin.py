@@ -21,12 +21,13 @@ def _pct(part, total):
 def _build_stats(days_range: int):
     today = timezone.localdate()
     start = today - timedelta(days=days_range - 1)
+    local_tz = timezone.get_current_timezone()
 
     # PageViews agregados por página y día
     views_qs = (
         PageView.objects
         .filter(timestamp__date__gte=start)
-        .annotate(day=TruncDate('timestamp'))
+        .annotate(day=TruncDate('timestamp', tzinfo=local_tz))
         .values('day', 'page')
         .annotate(count=Count('id'))
     )
@@ -40,7 +41,7 @@ def _build_stats(days_range: int):
     pending_qs = (
         PendingBooking.objects
         .filter(created_at__date__gte=start)
-        .annotate(day=TruncDate('created_at'))
+        .annotate(day=TruncDate('created_at', tzinfo=local_tz))
         .values('day')
         .annotate(count=Count('id'))
     )
@@ -49,7 +50,7 @@ def _build_stats(days_range: int):
     confirmed_qs = (
         Booking.objects
         .filter(created_at__date__gte=start)
-        .annotate(day=TruncDate('created_at'))
+        .annotate(day=TruncDate('created_at', tzinfo=local_tz))
         .values('day')
         .annotate(count=Count('id'))
     )
@@ -307,10 +308,12 @@ class PageViewAdmin(admin.ModelAdmin):
         # ── Datos por día para gráfico apilado de gestión ─────────────────────
         from django.db.models.functions import TruncDate as TD
 
+        local_tz = timezone.get_current_timezone()
+
         def _pending_by_day_status(status_filter):
             qs = (
                 all_period.filter(**status_filter)
-                .annotate(day=TD('created_at'))
+                .annotate(day=TD('created_at', tzinfo=local_tz))
                 .values('day')
                 .annotate(count=Count('id'))
             )
@@ -327,7 +330,7 @@ class PageViewAdmin(admin.ModelAdmin):
         ]
         expired_by_day: dict = {}
         for pb in expired_pbs:
-            d = pb.created_at.date()
+            d = timezone.localtime(pb.created_at).date()
             expired_by_day[d] = expired_by_day.get(d, 0) + 1
 
         # Esperando respuesta: PENDING cuyo turno aún no llegó
@@ -337,7 +340,7 @@ class PageViewAdmin(admin.ModelAdmin):
         ]
         waiting_by_day: dict = {}
         for pb in waiting_pbs:
-            d = pb.created_at.date()
+            d = timezone.localtime(pb.created_at).date()
             waiting_by_day[d] = waiting_by_day.get(d, 0) + 1
 
         # Construir arrays en orden cronológico (igual que chart_days en stats)
