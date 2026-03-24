@@ -98,9 +98,9 @@ def _build_stats(days_range: int):
          'description': 'Personas que abrieron el portafolio'},
         {'label': 'Visitas al calendario', 'count': totals['calendar'], 'color': '#f59e0b',
          'description': 'Continuaron para ver disponibilidad'},
-        {'label': 'Pre-reservas recibidas', 'count': totals['pending'], 'color': '#10b981',
+        {'label': 'Pre-reservas recibidas', 'count': totals['pending'], 'color': '#f97316',
          'description': 'Enviaron una solicitud de turno'},
-        {'label': 'Reservas confirmadas',  'count': totals['confirmed'], 'color': '#ffe927',
+        {'label': 'Reservas confirmadas',  'count': totals['confirmed'], 'color': '#22c55e',
          'description': 'Turno asignado y confirmado'},
     ]
     funnel_top = max((s['count'] for s in steps), default=1) or 1

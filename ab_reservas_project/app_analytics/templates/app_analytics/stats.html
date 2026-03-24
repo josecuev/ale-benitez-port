@@ -56,16 +56,20 @@
   .kpi__value { font-size:28px; font-weight:800; color:#1a1a1a; line-height:1; margin-bottom:4px; }
   .kpi__label { font-size:12px; font-weight:600; color:#333; margin-bottom:3px; }
   .kpi__help  { font-size:11px; color:#aaa; line-height:1.4; }
+  .kpi.blue   { border-color:#93c5fd; background:#eff6ff; }
+  .kpi.blue   .kpi__value { color:#1d4ed8; }
+  .kpi.purple { border-color:#c4b5fd; background:#f5f3ff; }
+  .kpi.purple .kpi__value { color:#6d28d9; }
+  .kpi.amber  { border-color:#fcd34d; background:#fffbeb; }
+  .kpi.amber  .kpi__value { color:#b45309; }
+  .kpi.orange { border-color:#fdba74; background:#fff7ed; }
+  .kpi.orange .kpi__value { color:#c2410c; }
+  .kpi.green  { border-color:#86efac; background:#f0fdf4; }
+  .kpi.green  .kpi__value { color:#15803d; }
+  .kpi.red    { border-color:#fca5a5; background:#fff5f5; }
+  .kpi.red    .kpi__value { color:#b91c1c; }
   .kpi.yellow { border-color:#ffe927; background:#fffde7; }
   .kpi.yellow .kpi__value { color:#b8860b; }
-  .kpi.red    { border-color:#f5b7b1; background:#fff5f5; }
-  .kpi.red    .kpi__value { color:#c0392b; }
-  .kpi.orange { border-color:#f0b27a; background:#fff8f0; }
-  .kpi.orange .kpi__value { color:#d35400; }
-  .kpi.green  { border-color:#a9dfbf; background:#f0faf4; }
-  .kpi.green  .kpi__value { color:#1a7a3f; }
-  .kpi.blue   { border-color:#aed6f1; background:#f0f7ff; }
-  .kpi.blue   .kpi__value { color:#1a5276; }
 
   /* ── Card wrapper ── */
   .card { background:#fff; border:1px solid #e8e8e8; border-radius:8px; padding:22px; margin-bottom:18px; }
@@ -98,7 +102,8 @@
   .data-table td { padding:7px 12px; border-bottom:1px solid #f2f2f2; color:#333; }
   .data-table tr:hover td { background:#fafafa; }
   .data-table td.num  { text-align:right; font-variant-numeric:tabular-nums; }
-  .data-table td.hl   { color:#b8860b; font-weight:600; }
+  .data-table td.hl-orange { color:#c2410c; font-weight:600; }
+  .data-table td.hl-green  { color:#15803d; font-weight:600; }
   .data-table td.zero { color:#ddd; }
   .sparkbar { display:inline-block; height:8px; background:#ffe927; border-radius:2px; min-width:2px; vertical-align:middle; margin-right:4px; }
 
@@ -202,19 +207,19 @@
         <div class="kpi__label">Portfolio</div>
         <div class="kpi__help">Visitas a la galería de fotos (alejandrobenitez.com)</div>
       </div>
-      <div class="kpi blue">
+      <div class="kpi purple">
         <div class="kpi__icon">🔗</div>
         <div class="kpi__value">{{ totals.links }}</div>
         <div class="kpi__label">Links</div>
         <div class="kpi__help">Visitas a la página de links (links.alejandrobenitez.com)</div>
       </div>
-      <div class="kpi blue">
+      <div class="kpi amber">
         <div class="kpi__icon">📅</div>
         <div class="kpi__value">{{ totals.calendar }}</div>
         <div class="kpi__label">Calendario</div>
         <div class="kpi__help">Visitas al calendario de disponibilidad de Fractalia</div>
       </div>
-      <div class="kpi yellow">
+      <div class="kpi orange">
         <div class="kpi__icon">📩</div>
         <div class="kpi__value">{{ totals.pending }}</div>
         <div class="kpi__label">Pre-reservas recibidas</div>
@@ -318,8 +323,8 @@
             </td>
             <td class="num {% if day.links == 0 %}zero{% endif %}">{% if day.links %}{{ day.links }}{% else %}—{% endif %}</td>
             <td class="num {% if day.calendar == 0 %}zero{% endif %}">{% if day.calendar %}{{ day.calendar }}{% else %}—{% endif %}</td>
-            <td class="num {% if day.pending %}hl{% else %}zero{% endif %}">{% if day.pending %}{{ day.pending }}{% else %}—{% endif %}</td>
-            <td class="num {% if day.confirmed %}hl{% else %}zero{% endif %}">{% if day.confirmed %}{{ day.confirmed }}{% else %}—{% endif %}</td>
+            <td class="num {% if day.pending %}hl-orange{% else %}zero{% endif %}">{% if day.pending %}{{ day.pending }}{% else %}—{% endif %}</td>
+            <td class="num {% if day.confirmed %}hl-green{% else %}zero{% endif %}">{% if day.confirmed %}{{ day.confirmed }}{% else %}—{% endif %}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -556,9 +561,9 @@ const Y_ZERO = { beginAtZero: true, ticks: { stepSize: 1 } };
 new Chart(document.getElementById('chartVisits'), {
   type: 'line',
   data: { labels: DAYS, datasets: [
-    { label: 'Portfolio (galería)',  data: PORT,  borderColor:'#3b82f6', backgroundColor:'#3b82f618', tension:.3, fill:true, pointRadius:3 },
-    { label: 'Links (bio)',          data: LINKS, borderColor:'#8b5cf6', backgroundColor:'#8b5cf618', tension:.3, fill:true, pointRadius:3 },
-    { label: 'Calendario Fractalia', data: CAL,   borderColor:'#f59e0b', backgroundColor:'#f59e0b18', tension:.3, fill:true, pointRadius:3 },
+    { label: 'Portfolio (galería)',  data: PORT,  borderColor:'#3b82f6', backgroundColor:'#3b82f620', tension:.3, fill:true, pointRadius:3 },
+    { label: 'Links (bio)',          data: LINKS, borderColor:'#8b5cf6', backgroundColor:'#8b5cf620', tension:.3, fill:true, pointRadius:3 },
+    { label: 'Calendario Fractalia', data: CAL,   borderColor:'#f59e0b', backgroundColor:'#f59e0b20', tension:.3, fill:true, pointRadius:3 },
   ]},
   options: { ...BASE_OPTS, scales: { x: X_AXIS, y: Y_ZERO } },
 });
@@ -567,8 +572,8 @@ new Chart(document.getElementById('chartVisits'), {
 new Chart(document.getElementById('chartBookings'), {
   type: 'bar',
   data: { labels: DAYS, datasets: [
-    { label: 'Pre-reservas recibidas', data: PEND, backgroundColor: '#10b98188' },
-    { label: 'Reservas confirmadas',   data: CONF, backgroundColor: '#ffe927bb', borderColor: '#ffe927', borderWidth: 1 },
+    { label: 'Pre-reservas recibidas', data: PEND, backgroundColor: '#f9731688' },
+    { label: 'Reservas confirmadas',   data: CONF, backgroundColor: '#22c55e99', borderColor: '#16a34a', borderWidth: 1 },
   ]},
   options: { ...BASE_OPTS, scales: { x: X_AXIS, y: Y_ZERO } },
 });
