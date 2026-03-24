@@ -4,7 +4,6 @@ import json
 from django.core.cache import cache
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
 
 from .models import PageView, VALID_PAGE_KEYS
 
@@ -19,9 +18,6 @@ ALLOWED_ORIGINS = {
 }
 
 # Rate limit: máximo 10 requests por IP por minuto.
-# Nota: con múltiples workers en producción, el límite se aplica por proceso
-# (Django usa LocMemCache por defecto). Si se configura Redis como cache backend,
-# el rate limit será global entre todos los procesos.
 RATE_LIMIT = 10
 RATE_WINDOW_SECONDS = 60
 
@@ -42,16 +38,24 @@ def _is_rate_limited(ip: str) -> bool:
     return False
 
 
-def _origin_allowed(request) -> bool:
-    for header in ('HTTP_ORIGIN', 'HTTP_REFERER'):
-        value = request.META.get(header, '')
-        if any(domain in value for domain in ALLOWED_ORIGINS):
-            return True
-    return False
+def _get_allowed_origin(request) -> str | None:
+    """Retorna el origin si está en la lista de permitidos, None si no."""
+    origin = request.META.get('HTTP_ORIGIN', '')
+    if origin and any(domain in origin for domain in ALLOWED_ORIGINS):
+        return origin
+    referrer = request.META.get('HTTP_REFERER', '')
+    if referrer and any(domain in referrer for domain in ALLOWED_ORIGINS):
+        return referrer.split('/')[0] + '//' + referrer.split('/')[2]
+    return None
+
+
+def _add_cors(response, origin: str) -> None:
+    response['Access-Control-Allow-Origin'] = origin
+    response['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+    response['Access-Control-Allow-Headers'] = 'Content-Type'
 
 
 @csrf_exempt
-@require_POST
 def track_pageview(request):
     """
     POST /api/analytics/track/
@@ -61,22 +65,40 @@ def track_pageview(request):
     Rate limit: 10 req/min por IP.
     Origin check: solo dominios conocidos.
     """
-    ip = _get_ip(request)
+    allowed_origin = _get_allowed_origin(request)
 
-    if _is_rate_limited(ip):
-        return JsonResponse({'ok': False, 'error': 'rate_limited'}, status=429)
+    # Preflight CORS
+    if request.method == 'OPTIONS':
+        if not allowed_origin:
+            return JsonResponse({'ok': False}, status=403)
+        resp = JsonResponse({})
+        _add_cors(resp, allowed_origin)
+        return resp
 
-    if not _origin_allowed(request):
+    if request.method != 'POST':
+        return JsonResponse({'ok': False}, status=405)
+
+    if not allowed_origin:
         return JsonResponse({'ok': False, 'error': 'forbidden'}, status=403)
+
+    ip = _get_ip(request)
+    if _is_rate_limited(ip):
+        resp = JsonResponse({'ok': False, 'error': 'rate_limited'}, status=429)
+        _add_cors(resp, allowed_origin)
+        return resp
 
     try:
         data = json.loads(request.body)
     except (json.JSONDecodeError, ValueError):
-        return JsonResponse({'ok': False, 'error': 'invalid_json'}, status=400)
+        resp = JsonResponse({'ok': False, 'error': 'invalid_json'}, status=400)
+        _add_cors(resp, allowed_origin)
+        return resp
 
     page = str(data.get('page', '')).strip()
     if page not in VALID_PAGE_KEYS:
-        return JsonResponse({'ok': False, 'error': 'invalid_page'}, status=400)
+        resp = JsonResponse({'ok': False, 'error': 'invalid_page'}, status=400)
+        _add_cors(resp, allowed_origin)
+        return resp
 
     referrer_url = str(data.get('referrer', ''))[:200]
     user_agent = request.META.get('HTTP_USER_AGENT', '')
@@ -88,4 +110,6 @@ def track_pageview(request):
         user_agent_hash=hashlib.sha256(user_agent.encode()).hexdigest() if user_agent else '',
     )
 
-    return JsonResponse({'ok': True})
+    resp = JsonResponse({'ok': True})
+    _add_cors(resp, allowed_origin)
+    return resp
