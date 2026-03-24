@@ -458,6 +458,12 @@
         <div class="kpi__label">Tasa de abandono</div>
         <div class="kpi__help">Pre-reservas que vencieron sin que se confirmaran ni rechazaran. Más del 20% es señal de alerta.</div>
       </div>
+      <div class="kpi blue">
+        <div class="kpi__icon">💬</div>
+        <div class="kpi__value">{{ responded_count }}</div>
+        <div class="kpi__label">Respondidas</div>
+        <div class="kpi__help">Se avisó al cliente que el turno no puede ser, sin asignar horario.</div>
+      </div>
       {% if resp_avg %}
       <div class="kpi blue">
         <div class="kpi__icon">⏱</div>
@@ -544,6 +550,7 @@ const CONF = {{ chart_confirmed|safe }};
 const MONTH_LABELS     = {{ chart_month_labels|safe }};
 const MONTH_VIEWS      = {{ chart_month_views|safe }};
 const PEND_CONFIRMED   = {{ chart_pending_confirmed|safe }};
+const PEND_RESPONDED   = {{ chart_pending_responded|safe }};
 const PEND_CANCELLED   = {{ chart_pending_cancelled|safe }};
 const PEND_EXPIRED     = {{ chart_pending_expired|safe }};
 const PEND_WAITING     = {{ chart_pending_waiting|safe }};
@@ -595,10 +602,11 @@ new Chart(document.getElementById('chartMonthly'), {
 new Chart(document.getElementById('chartPendingStatus'), {
   type: 'bar',
   data: { labels: DAYS, datasets: [
-    { label: 'Confirmadas (turno asignado)',       data: PEND_CONFIRMED, backgroundColor: '#27ae6088' },
-    { label: 'Canceladas (cliente o estudio)',     data: PEND_CANCELLED, backgroundColor: '#95a5a688' },
-    { label: 'Vencidas sin respuesta (ignoradas)', data: PEND_EXPIRED,   backgroundColor: '#e74c3c88' },
-    { label: 'Esperando respuesta (activas)',      data: PEND_WAITING,   backgroundColor: '#f39c1288' },
+    { label: 'Confirmadas (turno asignado)',        data: PEND_CONFIRMED, backgroundColor: '#22c55e99' },
+    { label: 'Respondidas (sin confirmar turno)',  data: PEND_RESPONDED, backgroundColor: '#38bdf899' },
+    { label: 'Canceladas (cliente o estudio)',     data: PEND_CANCELLED, backgroundColor: '#94a3b899' },
+    { label: 'Vencidas sin respuesta (ignoradas)', data: PEND_EXPIRED,   backgroundColor: '#ef444499' },
+    { label: 'Esperando respuesta (activas)',      data: PEND_WAITING,   backgroundColor: '#f9731699' },
   ]},
   options: {
     ...BASE_OPTS,

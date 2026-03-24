@@ -16,6 +16,7 @@ class EstadoGestionFilter(admin.SimpleListFilter):
             ('vencidas',    '⚠️  Vencidas sin respuesta'),
             ('activas',     '🕐  Activas sin confirmar'),
             ('confirmadas', '✅  Confirmadas'),
+            ('respondidas', '💬  Respondidas'),
             ('canceladas',  '❌  Canceladas'),
         ]
 
@@ -27,6 +28,8 @@ class EstadoGestionFilter(admin.SimpleListFilter):
             return queryset.filter(status='PENDING', date__gte=today)
         if self.value() == 'confirmadas':
             return queryset.filter(status='CONFIRMED')
+        if self.value() == 'respondidas':
+            return queryset.filter(status='RESPONDED')
         if self.value() == 'canceladas':
             return queryset.filter(status='CANCELLED')
 
@@ -260,7 +263,7 @@ class PendingBookingAdmin(admin.ModelAdmin):
     readonly_fields = ('reservation_code', 'created_at', 'whatsapp_link_display')
     ordering = ('date', 'start_time')
     date_hierarchy = 'date'
-    actions = ['confirmar', 'deshacer']
+    actions = ['confirmar', 'responder', 'deshacer']
     fieldsets = (
         ('Información del cliente', {
             'fields': ('client_name', 'client_phone', 'whatsapp_link_display')
@@ -310,6 +313,11 @@ class PendingBookingAdmin(admin.ModelAdmin):
                 '<span style="color:#15803d; font-weight:700; font-size:12px;">'
                 '✅ Confirmada</span>'
             )
+        elif obj.status == 'RESPONDED':
+            return mark_safe(
+                '<span style="color:#0369a1; font-weight:700; font-size:12px;">'
+                '💬 Respondida</span>'
+            )
         elif obj.status == 'CANCELLED':
             return mark_safe(
                 '<span style="color:#6b7280; font-weight:700; font-size:12px;">'
@@ -332,6 +340,8 @@ class PendingBookingAdmin(admin.ModelAdmin):
             color = '#b91c1c'
         elif obj.status == 'PENDING':
             color = '#c2410c'
+        elif obj.status == 'RESPONDED':
+            color = '#0369a1'
         else:
             color = '#9ca3af'
         return mark_safe(f'<span style="color:{color}; font-size:12px;">hace {label}</span>')
@@ -488,5 +498,24 @@ class PendingBookingAdmin(admin.ModelAdmin):
                 messages.WARNING
             )
 
-    confirmar.short_description = 'Confirmar'
+    def responder(self, request, queryset):
+        """PENDING → RESPONDED: marca como respondida al cliente (no se confirma el turno)."""
+        count = 0
+        skipped = 0
+        for pending in queryset:
+            if pending.status == 'PENDING':
+                pending.status = 'RESPONDED'
+                pending.save()
+                count += 1
+            else:
+                skipped += 1
+        if count:
+            palabra = 'solicitud marcada' if count == 1 else 'solicitudes marcadas'
+            self.message_user(request, f'{count} {palabra} como Respondida.', messages.SUCCESS)
+        if skipped:
+            palabra = 'solicitud' if skipped == 1 else 'solicitudes'
+            self.message_user(request, f'{skipped} {palabra} no estaba Pendiente.', messages.WARNING)
+
+    confirmar.short_description = 'Confirmar turno'
+    responder.short_description = 'Marcar como Respondida (sin confirmar turno)'
     deshacer.short_description = 'Deshacer confirmación'

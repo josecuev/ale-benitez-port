@@ -270,8 +270,9 @@ class PageViewAdmin(admin.ModelAdmin):
 
         all_period = PendingBooking.objects.filter(created_at__date__gte=period_start)
         total_period    = all_period.count()
-        confirmed_count = all_period.filter(status='CONFIRMED').count()
-        cancelled_count = all_period.filter(status='CANCELLED').count()
+        confirmed_count  = all_period.filter(status='CONFIRMED').count()
+        responded_count  = all_period.filter(status='RESPONDED').count()
+        cancelled_count  = all_period.filter(status='CANCELLED').count()
 
         # Vencidas sin gestionar en el período (status PENDING y fecha ya pasó)
         expired_unmanaged_count = sum(
@@ -295,6 +296,7 @@ class PageViewAdmin(admin.ModelAdmin):
             return {row['day']: row['count'] for row in qs}
 
         conf_by_day   = _pending_by_day_status({'status': 'CONFIRMED'})
+        resp_by_day   = _pending_by_day_status({'status': 'RESPONDED'})
         canc_by_day   = _pending_by_day_status({'status': 'CANCELLED'})
 
         # Vencidas sin acción: PENDING cuya fecha de turno < hoy, agrupadas por created_at date
@@ -319,8 +321,9 @@ class PageViewAdmin(admin.ModelAdmin):
 
         # Construir arrays en orden cronológico (igual que chart_days en stats)
         chart_days_ordered = list(reversed(stats['days']))  # más antiguo primero
-        chart_pending_confirmed = [conf_by_day.get(d['date'], 0)   for d in chart_days_ordered]
-        chart_pending_cancelled = [canc_by_day.get(d['date'], 0)   for d in chart_days_ordered]
+        chart_pending_confirmed = [conf_by_day.get(d['date'], 0)    for d in chart_days_ordered]
+        chart_pending_responded = [resp_by_day.get(d['date'], 0)    for d in chart_days_ordered]
+        chart_pending_cancelled = [canc_by_day.get(d['date'], 0)    for d in chart_days_ordered]
         chart_pending_expired   = [expired_by_day.get(d['date'], 0) for d in chart_days_ordered]
         chart_pending_waiting   = [waiting_by_day.get(d['date'], 0) for d in chart_days_ordered]
 
@@ -404,7 +407,9 @@ class PageViewAdmin(admin.ModelAdmin):
             'chart_calendar':    json.dumps(stats['chart_calendar']),
             'chart_pending':     json.dumps(stats['chart_pending']),
             'chart_confirmed':   json.dumps(stats['chart_confirmed']),
+            'responded_count':  responded_count,
             'chart_pending_confirmed': json.dumps(chart_pending_confirmed),
+            'chart_pending_responded': json.dumps(chart_pending_responded),
             'chart_pending_cancelled': json.dumps(chart_pending_cancelled),
             'chart_pending_expired':   json.dumps(chart_pending_expired),
             'chart_pending_waiting':   json.dumps(chart_pending_waiting),
