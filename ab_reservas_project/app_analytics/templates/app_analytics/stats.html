@@ -115,7 +115,7 @@
   .badge-gray   { background:#f0f0f0; color:#888; }
 
   /* ── Alert blocks ── */
-  .alert-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:24px; }
+  .alert-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-bottom:24px; }
   .alert-block { border-radius:10px; padding:20px; border:2px solid; }
   .alert-block__status { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; margin-bottom:8px; }
   .alert-block__count  { font-size:40px; font-weight:900; line-height:1; margin-bottom:6px; }
@@ -179,7 +179,7 @@
     </button>
     <button class="tab-btn" onclick="switchTab('prereservas', this)">
       📋 Pre-reservas
-      {% if unmanaged_expired or unmanaged_active %}
+      {% if unmanaged_expired or unmanaged_active or overlapping or conflicting_pb_pairs %}
         <span class="tab-badge">{{ unmanaged_expired|length|add:unmanaged_active|length }}</span>
       {% endif %}
     </button>
@@ -432,6 +432,32 @@
           <div class="alert-block__item" style="color:#6c3483;">
             {{ o.obj.date|date:"d/m" }} {{ o.obj.start_time|time:"H:i" }}–{{ o.obj.end_time|time:"H:i" }}
             — <strong>{{ o.obj.client_name|default:"Sin nombre" }}</strong>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="alert-block" style="background:{% if conflicting_pb_pairs %}#fffbeb{% else %}#f0faf4{% endif %}; border-color:{% if conflicting_pb_pairs %}#d97706{% else %}#27ae60{% endif %};">
+        <div class="alert-block__status" style="color:{% if conflicting_pb_pairs %}#92400e{% else %}#1a7a3f{% endif %};">
+          {% if conflicting_pb_pairs %}⚡ Competencia por horario{% else %}✅ Sin duplicados{% endif %}
+        </div>
+        <div class="alert-block__count" style="color:{% if conflicting_pb_pairs %}#d97706{% else %}#1a7a3f{% endif %};">{{ conflicting_pb_pairs|length }}</div>
+        <div class="alert-block__title">Pre-reservas que compiten entre sí</div>
+        <div class="alert-block__desc">
+          {% if conflicting_pb_pairs %}
+            Dos o más clientes pidieron el mismo horario. Solo una puede confirmarse — el resto hay que responderlas.
+            <a href="/admin/app_fractalia/pendingbooking/?gestion=conflicto_prereservas" style="display:inline-block; margin-top:8px; font-size:11px; font-weight:700; color:#92400e; text-decoration:none; border:1px solid #d97706; border-radius:4px; padding:3px 8px;">Ver en listado →</a>
+          {% else %}
+            No hay pre-reservas que pidan el mismo horario simultáneamente.
+          {% endif %}
+        </div>
+        {% if conflicting_pb_pairs %}
+        <div class="alert-block__list">
+          {% for c in conflicting_pb_pairs %}
+          <div class="alert-block__item" style="color:#92400e;">
+            {{ c.obj.date|date:"d/m" }} {{ c.obj.start_time|time:"H:i" }}–{{ c.obj.end_time|time:"H:i" }}
+            — <strong>{{ c.obj.client_name|default:"Sin nombre" }}</strong>
           </div>
           {% endfor %}
         </div>

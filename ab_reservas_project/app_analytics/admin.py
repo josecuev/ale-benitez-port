@@ -236,6 +236,27 @@ class PageViewAdmin(admin.ModelAdmin):
                     'hours_waiting': u['hours_waiting'],
                 })
 
+        # ── Solapamientos entre pre-reservas PENDING ─────────────────────────────
+        # Dos pre-reservas que piden el mismo recurso y horario: solo una puede confirmarse.
+        active_pbs = [u['obj'] for u in unmanaged_active]
+        conflicting_pb_pairs = []
+        seen_ids = set()
+        for i, pb1 in enumerate(active_pbs):
+            pb1_start = timezone.make_aware(dt.combine(pb1.date, pb1.start_time))
+            pb1_end   = timezone.make_aware(dt.combine(pb1.date, pb1.end_time))
+            for pb2 in active_pbs[i + 1:]:
+                if pb1.resource_id != pb2.resource_id:
+                    continue
+                pb2_start = timezone.make_aware(dt.combine(pb2.date, pb2.start_time))
+                pb2_end   = timezone.make_aware(dt.combine(pb2.date, pb2.end_time))
+                if pb1_start < pb2_end and pb1_end > pb2_start:
+                    if pb1.pk not in seen_ids:
+                        conflicting_pb_pairs.append({'obj': pb1})
+                        seen_ids.add(pb1.pk)
+                    if pb2.pk not in seen_ids:
+                        conflicting_pb_pairs.append({'obj': pb2})
+                        seen_ids.add(pb2.pk)
+
         # ── Tiempo de confirmación: PendingBooking.created_at → Booking.created_at ──
         # Se calcula para las pre-reservas CONFIRMED del período cuya Booking
         # tiene el código en notes (flujo normal de confirmación desde el admin).
@@ -377,6 +398,7 @@ class PageViewAdmin(admin.ModelAdmin):
             'unmanaged_active': unmanaged_active,
             'unmanaged_expired': unmanaged_expired,
             'overlapping': overlapping,
+            'conflicting_pb_pairs': conflicting_pb_pairs,
             'pending_conversion_rate': pending_conversion_rate,
             'pending_expired_rate': pending_expired_rate,
             'resp_avg': resp_avg,

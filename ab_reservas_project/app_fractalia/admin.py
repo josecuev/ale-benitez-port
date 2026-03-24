@@ -15,7 +15,8 @@ class EstadoGestionFilter(admin.SimpleListFilter):
         return [
             ('vencidas',    '⚠️  Vencidas sin respuesta'),
             ('activas',     '🕐  Activas sin confirmar'),
-            ('conflicto',   '🔴  Con conflicto de horario'),
+            ('conflicto',           '🔴  Conflicto con reserva confirmada'),
+            ('conflicto_prereservas', '⚡  Compite con otra pre-reserva'),
             ('confirmadas', '✅  Confirmadas'),
             ('respondidas', '💬  Respondidas'),
             ('canceladas',  '❌  Canceladas'),
@@ -43,6 +44,22 @@ class EstadoGestionFilter(admin.SimpleListFilter):
                     for b in confirmed_bookings
                 ):
                     conflicting_ids.append(pb.pk)
+            return queryset.filter(pk__in=conflicting_ids)
+        if self.value() == 'conflicto_prereservas':
+            pending_activas = queryset.filter(status='PENDING', date__gte=today)
+            all_pending = list(pending_activas)
+            conflicting_ids = set()
+            for i, pb1 in enumerate(all_pending):
+                pb1_start = timezone.make_aware(datetime.combine(pb1.date, pb1.start_time))
+                pb1_end   = timezone.make_aware(datetime.combine(pb1.date, pb1.end_time))
+                for pb2 in all_pending[i + 1:]:
+                    if pb1.resource_id != pb2.resource_id:
+                        continue
+                    pb2_start = timezone.make_aware(datetime.combine(pb2.date, pb2.start_time))
+                    pb2_end   = timezone.make_aware(datetime.combine(pb2.date, pb2.end_time))
+                    if pb1_start < pb2_end and pb1_end > pb2_start:
+                        conflicting_ids.add(pb1.pk)
+                        conflicting_ids.add(pb2.pk)
             return queryset.filter(pk__in=conflicting_ids)
         if self.value() == 'confirmadas':
             return queryset.filter(status='CONFIRMED')
