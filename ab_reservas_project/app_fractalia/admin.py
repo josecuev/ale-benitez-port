@@ -15,6 +15,7 @@ class EstadoGestionFilter(admin.SimpleListFilter):
         return [
             ('vencidas',    '⚠️  Vencidas sin respuesta'),
             ('activas',     '🕐  Activas sin confirmar'),
+            ('conflicto',   '🔴  Con conflicto de horario'),
             ('confirmadas', '✅  Confirmadas'),
             ('respondidas', '💬  Respondidas'),
             ('canceladas',  '❌  Canceladas'),
@@ -26,6 +27,23 @@ class EstadoGestionFilter(admin.SimpleListFilter):
             return queryset.filter(status='PENDING', date__lt=today)
         if self.value() == 'activas':
             return queryset.filter(status='PENDING', date__gte=today)
+        if self.value() == 'conflicto':
+            # PRE-reservas PENDING activas que solapan con un Booking confirmado
+            pending_activas = queryset.filter(status='PENDING', date__gte=today)
+            confirmed_bookings = list(
+                Booking.objects.filter(status='CONFIRMED')
+                .values('start_datetime', 'end_datetime')
+            )
+            conflicting_ids = []
+            for pb in pending_activas:
+                pb_start = timezone.make_aware(datetime.combine(pb.date, pb.start_time))
+                pb_end   = timezone.make_aware(datetime.combine(pb.date, pb.end_time))
+                if any(
+                    b['start_datetime'] < pb_end and b['end_datetime'] > pb_start
+                    for b in confirmed_bookings
+                ):
+                    conflicting_ids.append(pb.pk)
+            return queryset.filter(pk__in=conflicting_ids)
         if self.value() == 'confirmadas':
             return queryset.filter(status='CONFIRMED')
         if self.value() == 'respondidas':

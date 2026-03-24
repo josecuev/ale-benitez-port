@@ -369,7 +369,7 @@
         <div class="alert-block__desc">
           {% if unmanaged_expired %}
             El turno ya pasó y el cliente nunca recibió confirmación ni rechazo. Es tarde para gestionar el turno, pero el cliente merece una respuesta.
-            <a href="/admin/app_fractalia/pendingebooking/?gestion=vencidas" style="display:inline-block; margin-top:8px; font-size:11px; font-weight:700; color:#b91c1c; text-decoration:none; border:1px solid #b91c1c; border-radius:4px; padding:3px 8px;">Ver en listado →</a>
+            <a href="/admin/app_fractalia/pendingbooking/?gestion=vencidas" style="display:inline-block; margin-top:8px; font-size:11px; font-weight:700; color:#b91c1c; text-decoration:none; border:1px solid #b91c1c; border-radius:4px; padding:3px 8px;">Ver en listado →</a>
           {% else %}
             No quedaron pre-reservas sin atender del pasado. ¡Bien!
           {% endif %}
@@ -395,7 +395,7 @@
         <div class="alert-block__desc">
           {% if unmanaged_active %}
             El turno todavía no llegó. Todavía estás a tiempo de confirmar o rechazar y avisar al cliente.
-            <a href="/admin/app_fractalia/pendingebooking/?gestion=activas" style="display:inline-block; margin-top:8px; font-size:11px; font-weight:700; color:#c2410c; text-decoration:none; border:1px solid #c2410c; border-radius:4px; padding:3px 8px;">Ver en listado →</a>
+            <a href="/admin/app_fractalia/pendingbooking/?gestion=activas" style="display:inline-block; margin-top:8px; font-size:11px; font-weight:700; color:#c2410c; text-decoration:none; border:1px solid #c2410c; border-radius:4px; padding:3px 8px;">Ver en listado →</a>
           {% else %}
             No hay solicitudes esperando respuesta. ¡Todo al día!
           {% endif %}
@@ -421,7 +421,7 @@
         <div class="alert-block__desc">
           {% if overlapping %}
             Estas pre-reservas piden un horario que ya está ocupado por una reserva confirmada. Si intentás confirmarlas va a fallar. Hay que avisar al cliente que ese horario no está disponible.
-            <a href="/admin/app_fractalia/pendingebooking/?gestion=activas" style="display:inline-block; margin-top:8px; font-size:11px; font-weight:700; color:#6d28d9; text-decoration:none; border:1px solid #6d28d9; border-radius:4px; padding:3px 8px;">Ver en listado →</a>
+            <a href="/admin/app_fractalia/pendingbooking/?gestion=conflicto" style="display:inline-block; margin-top:8px; font-size:11px; font-weight:700; color:#6d28d9; text-decoration:none; border:1px solid #6d28d9; border-radius:4px; padding:3px 8px;">Ver en listado →</a>
           {% else %}
             Ninguna pre-reserva activa choca con un turno ya confirmado.
           {% endif %}
