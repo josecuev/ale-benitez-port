@@ -290,8 +290,8 @@ class BookingAdmin(admin.ModelAdmin):
 @admin.register(PendingBooking)
 class PendingBookingAdmin(admin.ModelAdmin):
     list_display = (
-        'estado_gestion', 'formatted_date', 'client_name',
-        'resource', 'recibida_hace', 'whatsapp_link_list',
+        'estado_gestion', 'formatted_date', 'horario',
+        'client_name', 'resource', 'recibida_hace', 'whatsapp_link_list',
     )
     list_filter = (EstadoGestionFilter, 'resource')
     search_fields = ('reservation_code', 'client_name', 'client_phone')
@@ -360,6 +360,15 @@ class PendingBookingAdmin(admin.ModelAdmin):
             )
         return mark_safe(f'<span style="color:#888;">{obj.get_status_display()}</span>')
     estado_gestion.short_description = 'Estado'
+
+    def horario(self, obj):
+        return mark_safe(
+            f'<span style="font-weight:700; font-size:13px; font-variant-numeric:tabular-nums;">'
+            f'{obj.start_time.strftime("%H:%M")}</span>'
+            f'<span style="color:#aaa; font-size:11px;"> – {obj.end_time.strftime("%H:%M")}</span>'
+        )
+    horario.short_description = 'Horario'
+    horario.admin_order_field = 'start_time'
 
     def recibida_hace(self, obj):
         from django.utils import timezone as tz
