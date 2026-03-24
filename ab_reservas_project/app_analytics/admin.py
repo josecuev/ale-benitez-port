@@ -351,6 +351,48 @@ class PageViewAdmin(admin.ModelAdmin):
         chart_pending_expired   = [expired_by_day.get(d['date'], 0) for d in chart_days_ordered]
         chart_pending_waiting   = [waiting_by_day.get(d['date'], 0) for d in chart_days_ordered]
 
+        # ── Vista 2: agrupado por fecha del TURNO (pb.date) ──────────────────
+        # Muestra qué días tienen turnos confirmados, pendientes, etc.
+        # Solo pre-reservas dentro del período cuya fecha de turno también cae en el rango.
+        all_by_booking_date = PendingBooking.objects.filter(date__gte=start, date__lte=today + timedelta(days=14))
+
+        def _by_booking_date(status_filter):
+            qs = (
+                all_by_booking_date.filter(**status_filter)
+                .values('date')
+                .annotate(count=Count('id'))
+            )
+            return {row['date']: row['count'] for row in qs}
+
+        bd_confirmed = _by_booking_date({'status': 'CONFIRMED'})
+        bd_responded = _by_booking_date({'status': 'RESPONDED'})
+        bd_cancelled = _by_booking_date({'status': 'CANCELLED'})
+        bd_expired   = {pb.date: bd_expired.get(pb.date, 0) + 1
+                        for pb in all_by_booking_date.filter(status='PENDING')
+                        if pb.date < today
+                        for bd_expired in [{}]}  # workaround inline — usamos loop explícito
+
+        # Loop explícito para expiradas y esperando por fecha de turno
+        bd_expired_d: dict = {}
+        bd_waiting_d: dict = {}
+        for pb in all_by_booking_date.filter(status='PENDING'):
+            if pb.date < today:
+                bd_expired_d[pb.date] = bd_expired_d.get(pb.date, 0) + 1
+            else:
+                bd_waiting_d[pb.date] = bd_waiting_d.get(pb.date, 0) + 1
+
+        # Labels para eje X de vista 2: días del período + próximos 14 días
+        _wd = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+        booking_date_range = [start + timedelta(days=i) for i in range(days_range + 14)]
+        chart_booking_date_labels = [
+            [_wd[d.weekday()], d.strftime('%-d/%m')] for d in booking_date_range
+        ]
+        chart_bd_confirmed = [bd_confirmed.get(d, 0) for d in booking_date_range]
+        chart_bd_responded = [bd_responded.get(d, 0) for d in booking_date_range]
+        chart_bd_cancelled = [bd_cancelled.get(d, 0) for d in booking_date_range]
+        chart_bd_expired   = [bd_expired_d.get(d, 0) for d in booking_date_range]
+        chart_bd_waiting   = [bd_waiting_d.get(d, 0) for d in booking_date_range]
+
         # ── Próximos 15 días con pre-reservas pendientes (vista ejecutiva) ─────
         upcoming_days = []
         for offset in range(15):
@@ -438,6 +480,12 @@ class PageViewAdmin(admin.ModelAdmin):
             'chart_pending_cancelled': json.dumps(chart_pending_cancelled),
             'chart_pending_expired':   json.dumps(chart_pending_expired),
             'chart_pending_waiting':   json.dumps(chart_pending_waiting),
+            'chart_booking_date_labels': json.dumps(chart_booking_date_labels),
+            'chart_bd_confirmed': json.dumps(chart_bd_confirmed),
+            'chart_bd_responded': json.dumps(chart_bd_responded),
+            'chart_bd_cancelled': json.dumps(chart_bd_cancelled),
+            'chart_bd_expired':   json.dumps(chart_bd_expired),
+            'chart_bd_waiting':   json.dumps(chart_bd_waiting),
             'title': f'Analytics — últimos {days_range} días',
             'has_permission': True,
         }

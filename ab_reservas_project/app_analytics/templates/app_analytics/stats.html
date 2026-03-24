@@ -512,13 +512,22 @@
       {% endif %}
     </div>
 
-    {# Gráfico apilado #}
+    {# Gráfico apilado — vista 1: por fecha de recepción #}
     <div class="section-head">
-      <h2>Qué pasó con cada pre-reserva recibida</h2>
-      <p>Cada barra muestra cuántas pre-reservas se confirmaron, cancelaron, vencieron sin respuesta, o siguen esperando — agrupadas por día en que fueron recibidas.</p>
+      <h2>Por cuándo llegó la solicitud</h2>
+      <p>Cada barra es un día en que se recibieron pre-reservas. Muestra qué resultó de cada una: confirmada, respondida, cancelada, vencida sin respuesta, o aún esperando. Sirve para ver el ritmo de trabajo y gestión.</p>
     </div>
     <div class="card">
       <div class="chart-box"><canvas id="chartPendingStatus"></canvas></div>
+    </div>
+
+    {# Gráfico apilado — vista 2: por fecha del turno #}
+    <div class="section-head">
+      <h2>Por cuándo es el turno</h2>
+      <p>Cada barra es un día de la agenda. Muestra cuántos turnos están confirmados, cuántas solicitudes quedaron sin respuesta y cuántas siguen esperando para ese día. Útil para ver qué días tienen trabajo pendiente.</p>
+    </div>
+    <div class="card">
+      <div class="chart-box"><canvas id="chartPendingByBookingDate"></canvas></div>
     </div>
 
     {# Próximos 15 días #}
@@ -580,6 +589,12 @@ const PEND_RESPONDED   = {{ chart_pending_responded|safe }};
 const PEND_CANCELLED   = {{ chart_pending_cancelled|safe }};
 const PEND_EXPIRED     = {{ chart_pending_expired|safe }};
 const PEND_WAITING     = {{ chart_pending_waiting|safe }};
+const BD_LABELS    = {{ chart_booking_date_labels|safe }};
+const BD_CONFIRMED = {{ chart_bd_confirmed|safe }};
+const BD_RESPONDED = {{ chart_bd_responded|safe }};
+const BD_CANCELLED = {{ chart_bd_cancelled|safe }};
+const BD_EXPIRED   = {{ chart_bd_expired|safe }};
+const BD_WAITING   = {{ chart_bd_waiting|safe }};
 const UPCOMING         = {{ upcoming_days_json|safe }};
 
 const BASE_OPTS = {
@@ -633,6 +648,25 @@ new Chart(document.getElementById('chartPendingStatus'), {
     { label: 'Canceladas (cliente o estudio)',     data: PEND_CANCELLED, backgroundColor: '#94a3b899' },
     { label: 'Vencidas sin respuesta (ignoradas)', data: PEND_EXPIRED,   backgroundColor: '#ef444499' },
     { label: 'Esperando respuesta (activas)',      data: PEND_WAITING,   backgroundColor: '#f9731699' },
+  ]},
+  options: {
+    ...BASE_OPTS,
+    scales: {
+      x: { stacked: true, ...X_AXIS },
+      y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1 } },
+    },
+  },
+});
+
+// Por fecha del turno (stacked)
+new Chart(document.getElementById('chartPendingByBookingDate'), {
+  type: 'bar',
+  data: { labels: BD_LABELS, datasets: [
+    { label: 'Confirmadas (turno asignado)',        data: BD_CONFIRMED, backgroundColor: '#22c55e99' },
+    { label: 'Respondidas (sin confirmar turno)',   data: BD_RESPONDED, backgroundColor: '#38bdf899' },
+    { label: 'Canceladas (cliente o estudio)',      data: BD_CANCELLED, backgroundColor: '#94a3b899' },
+    { label: 'Vencidas sin respuesta (ignoradas)',  data: BD_EXPIRED,   backgroundColor: '#ef444499' },
+    { label: 'Esperando respuesta (activas)',       data: BD_WAITING,   backgroundColor: '#f9731699' },
   ]},
   options: {
     ...BASE_OPTS,
