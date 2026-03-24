@@ -378,7 +378,7 @@ class PageViewAdmin(admin.ModelAdmin):
         bd_expired_d: dict = {}
         bd_waiting_d: dict = {}
         for pb in all_by_booking_date.filter(status='PENDING'):
-            if pb.date < today:
+            if _asuncion(dt.combine(pb.date, pb.start_time)) < now:
                 bd_expired_d[pb.date] = bd_expired_d.get(pb.date, 0) + 1
             else:
                 bd_waiting_d[pb.date] = bd_waiting_d.get(pb.date, 0) + 1
