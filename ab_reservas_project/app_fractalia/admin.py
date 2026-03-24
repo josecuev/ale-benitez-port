@@ -23,14 +23,23 @@ class EstadoGestionFilter(admin.SimpleListFilter):
         ]
 
     def queryset(self, request, queryset):
-        today = date_cls.today()
+        from django.db.models import Q
+        now = timezone.now()
+        today = timezone.localtime(now).date()
+        current_time = timezone.localtime(now).time()
         if self.value() == 'vencidas':
-            return queryset.filter(status='PENDING', date__lt=today)
+            return queryset.filter(status='PENDING').filter(
+                Q(date__lt=today) | Q(date=today, start_time__lt=current_time)
+            )
         if self.value() == 'activas':
-            return queryset.filter(status='PENDING', date__gte=today)
+            return queryset.filter(status='PENDING').filter(
+                Q(date__gt=today) | Q(date=today, start_time__gte=current_time)
+            )
         if self.value() == 'conflicto':
             # PRE-reservas PENDING activas que solapan con un Booking confirmado
-            pending_activas = queryset.filter(status='PENDING', date__gte=today)
+            pending_activas = queryset.filter(status='PENDING').filter(
+                Q(date__gt=today) | Q(date=today, start_time__gte=current_time)
+            )
             confirmed_bookings = list(
                 Booking.objects.filter(status='CONFIRMED')
                 .values('start_datetime', 'end_datetime')
@@ -46,7 +55,9 @@ class EstadoGestionFilter(admin.SimpleListFilter):
                     conflicting_ids.append(pb.pk)
             return queryset.filter(pk__in=conflicting_ids)
         if self.value() == 'conflicto_prereservas':
-            pending_activas = queryset.filter(status='PENDING', date__gte=today)
+            pending_activas = queryset.filter(status='PENDING').filter(
+                Q(date__gt=today) | Q(date=today, start_time__gte=current_time)
+            )
             all_pending = list(pending_activas)
             conflicting_ids = set()
             for i, pb1 in enumerate(all_pending):
@@ -331,9 +342,12 @@ class PendingBookingAdmin(admin.ModelAdmin):
     formatted_date.short_description = 'Fecha'
 
     def estado_gestion(self, obj):
-        today = date_cls.today()
+        now = timezone.now()
+        today = timezone.localtime(now).date()
+        current_time = timezone.localtime(now).time()
         if obj.status == 'PENDING':
-            if obj.date < today:
+            expired = obj.date < today or (obj.date == today and obj.start_time < current_time)
+            if expired:
                 return mark_safe(
                     '<span style="color:#b91c1c; font-weight:700; font-size:12px;">'
                     '⚠️ Vencida</span>'
@@ -379,7 +393,11 @@ class PendingBookingAdmin(admin.ModelAdmin):
             label = f'{int(hours)}h'
         else:
             label = f'{int(hours / 24)} días'
-        if obj.status == 'PENDING' and obj.date < date_cls.today():
+        now2 = timezone.now()
+        today2 = timezone.localtime(now2).date()
+        current_time2 = timezone.localtime(now2).time()
+        expired = obj.date < today2 or (obj.date == today2 and obj.start_time < current_time2)
+        if obj.status == 'PENDING' and expired:
             color = '#b91c1c'
         elif obj.status == 'PENDING':
             color = '#c2410c'
