@@ -117,11 +117,15 @@ def _build_stats(days_range: int):
         for d in chart_days
     ]
 
+    cal = totals['calendar'] or 1
+    cal_to_confirmed_pct = round(totals['confirmed'] / cal * 100)
+
     return {
         'totals': totals,
         'days': days,
         'funnel': steps,
         'funnel_top': funnel_top,
+        'cal_to_confirmed_pct': cal_to_confirmed_pct,
         'chart_days_labels': chart_days_labels,
         'chart_portfolio':  [d['portfolio'] for d in chart_days],
         'chart_links':      [d['links']     for d in chart_days],

@@ -270,12 +270,11 @@
       {% endfor %}
       <div class="funnel-note">
         💡 De cada 100 personas que ven el calendario,
-        <strong>{{ totals.confirmed|default:0 }} de {{ totals.calendar|default:1 }}</strong>
-        terminan con una reserva confirmada
-        ({{ totals.calendar|default:1|divisibleby:1 }}
-        {% if totals.calendar > 0 %}
-          = {{ totals.confirmed }} confirmadas / {{ totals.calendar }} visitas al calendario
-        {% endif %}).
+        <strong>{{ cal_to_confirmed_pct }}</strong>
+        terminan con una reserva confirmada.
+        {% if totals.calendar == 0 %}
+          Todavía no hay visitas registradas al calendario en este período.
+        {% endif %}
       </div>
     </div>
 
