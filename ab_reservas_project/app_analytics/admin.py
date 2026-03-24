@@ -367,11 +367,6 @@ class PageViewAdmin(admin.ModelAdmin):
         bd_confirmed = _by_booking_date({'status': 'CONFIRMED'})
         bd_responded = _by_booking_date({'status': 'RESPONDED'})
         bd_cancelled = _by_booking_date({'status': 'CANCELLED'})
-        bd_expired   = {pb.date: bd_expired.get(pb.date, 0) + 1
-                        for pb in all_by_booking_date.filter(status='PENDING')
-                        if pb.date < today
-                        for bd_expired in [{}]}  # workaround inline — usamos loop explícito
-
         # Loop explícito para expiradas y esperando por fecha de turno
         bd_expired_d: dict = {}
         bd_waiting_d: dict = {}
