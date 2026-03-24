@@ -3,7 +3,20 @@ from django.utils import timezone
 from django.utils.safestring import mark_safe
 from datetime import datetime, date as date_cls
 import re
+import zoneinfo
 from .models import Resource, WeeklyAvailability, Booking, PendingBooking
+
+_ASUNCION = zoneinfo.ZoneInfo('America/Asuncion')
+
+
+def _now_asuncion():
+    """Retorna el datetime actual en zona horaria America/Asuncion."""
+    return timezone.now().astimezone(_ASUNCION)
+
+
+def _asuncion(naive_dt):
+    """Convierte un datetime naive a America/Asuncion aware."""
+    return naive_dt.replace(tzinfo=_ASUNCION)
 
 
 class EstadoGestionFilter(admin.SimpleListFilter):
@@ -24,9 +37,9 @@ class EstadoGestionFilter(admin.SimpleListFilter):
 
     def queryset(self, request, queryset):
         from django.db.models import Q
-        now = timezone.now()
-        today = timezone.localtime(now).date()
-        current_time = timezone.localtime(now).time()
+        now_local = _now_asuncion()
+        today = now_local.date()
+        current_time = now_local.time()
         if self.value() == 'vencidas':
             return queryset.filter(status='PENDING').filter(
                 Q(date__lt=today) | Q(date=today, start_time__lt=current_time)
@@ -46,8 +59,8 @@ class EstadoGestionFilter(admin.SimpleListFilter):
             )
             conflicting_ids = []
             for pb in pending_activas:
-                pb_start = timezone.make_aware(datetime.combine(pb.date, pb.start_time))
-                pb_end   = timezone.make_aware(datetime.combine(pb.date, pb.end_time))
+                pb_start = _asuncion(datetime.combine(pb.date, pb.start_time))
+                pb_end   = _asuncion(datetime.combine(pb.date, pb.end_time))
                 if any(
                     b['start_datetime'] < pb_end and b['end_datetime'] > pb_start
                     for b in confirmed_bookings
@@ -61,13 +74,13 @@ class EstadoGestionFilter(admin.SimpleListFilter):
             all_pending = list(pending_activas)
             conflicting_ids = set()
             for i, pb1 in enumerate(all_pending):
-                pb1_start = timezone.make_aware(datetime.combine(pb1.date, pb1.start_time))
-                pb1_end   = timezone.make_aware(datetime.combine(pb1.date, pb1.end_time))
+                pb1_start = _asuncion(datetime.combine(pb1.date, pb1.start_time))
+                pb1_end   = _asuncion(datetime.combine(pb1.date, pb1.end_time))
                 for pb2 in all_pending[i + 1:]:
                     if pb1.resource_id != pb2.resource_id:
                         continue
-                    pb2_start = timezone.make_aware(datetime.combine(pb2.date, pb2.start_time))
-                    pb2_end   = timezone.make_aware(datetime.combine(pb2.date, pb2.end_time))
+                    pb2_start = _asuncion(datetime.combine(pb2.date, pb2.start_time))
+                    pb2_end   = _asuncion(datetime.combine(pb2.date, pb2.end_time))
                     if pb1_start < pb2_end and pb1_end > pb2_start:
                         conflicting_ids.add(pb1.pk)
                         conflicting_ids.add(pb2.pk)
@@ -342,9 +355,9 @@ class PendingBookingAdmin(admin.ModelAdmin):
     formatted_date.short_description = 'Fecha'
 
     def estado_gestion(self, obj):
-        now = timezone.now()
-        today = timezone.localtime(now).date()
-        current_time = timezone.localtime(now).time()
+        now_local = _now_asuncion()
+        today = now_local.date()
+        current_time = now_local.time()
         if obj.status == 'PENDING':
             expired = obj.date < today or (obj.date == today and obj.start_time < current_time)
             if expired:
@@ -393,9 +406,9 @@ class PendingBookingAdmin(admin.ModelAdmin):
             label = f'{int(hours)}h'
         else:
             label = f'{int(hours / 24)} días'
-        now2 = timezone.now()
-        today2 = timezone.localtime(now2).date()
-        current_time2 = timezone.localtime(now2).time()
+        now_local2 = _now_asuncion()
+        today2 = now_local2.date()
+        current_time2 = now_local2.time()
         expired = obj.date < today2 or (obj.date == today2 and obj.start_time < current_time2)
         if obj.status == 'PENDING' and expired:
             color = '#b91c1c'
@@ -485,12 +498,8 @@ class PendingBookingAdmin(admin.ModelAdmin):
         for pending in queryset:
             if pending.status in ('PENDING', 'REJECTED'):
                 try:
-                    start_dt = timezone.make_aware(
-                        datetime.combine(pending.date, pending.start_time)
-                    )
-                    end_dt = timezone.make_aware(
-                        datetime.combine(pending.date, pending.end_time)
-                    )
+                    start_dt = _asuncion(datetime.combine(pending.date, pending.start_time))
+                    end_dt   = _asuncion(datetime.combine(pending.date, pending.end_time))
 
                     Booking.objects.create(
                         resource=pending.resource,

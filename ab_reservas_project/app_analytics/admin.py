@@ -1,4 +1,5 @@
 from datetime import timedelta, date
+import zoneinfo
 
 from django.contrib import admin
 from django.db.models import Count
@@ -8,6 +9,13 @@ from django.urls import path
 from django.utils import timezone
 
 from .models import PageView, PageViewMonthly, VALID_PAGES
+
+_ASUNCION = zoneinfo.ZoneInfo('America/Asuncion')
+
+
+def _asuncion(naive_dt):
+    """Convierte un datetime naive a America/Asuncion aware."""
+    return naive_dt.replace(tzinfo=_ASUNCION)
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -19,9 +27,9 @@ def _pct(part, total):
 
 
 def _build_stats(days_range: int):
-    today = timezone.localdate()
+    today = timezone.now().astimezone(_ASUNCION).date()
     start = today - timedelta(days=days_range - 1)
-    local_tz = timezone.get_current_timezone()
+    local_tz = _ASUNCION
 
     # PageViews agregados por página y día
     views_qs = (
@@ -179,7 +187,7 @@ class PageViewAdmin(admin.ModelAdmin):
 
         # ── Pre-reservas sin gestionar ────────────────────────────────────────
         now = timezone.now()
-        today = timezone.localdate()
+        today = now.astimezone(_ASUNCION).date()
 
         unmanaged_qs = (
             PendingBooking.objects
@@ -199,9 +207,7 @@ class PageViewAdmin(admin.ModelAdmin):
 
         unmanaged = []
         for pb in unmanaged_qs:
-            booking_dt = timezone.make_aware(
-                dt.combine(pb.date, pb.start_time)
-            )
+            booking_dt = _asuncion(dt.combine(pb.date, pb.start_time))
             expired = booking_dt < now
             hours_waiting = (now - pb.created_at).total_seconds() / 3600
             unmanaged.append({
@@ -224,8 +230,8 @@ class PageViewAdmin(admin.ModelAdmin):
         overlapping = []
         for u in unmanaged_active:
             pb = u['obj']
-            pb_start = timezone.make_aware(dt.combine(pb.date, pb.start_time))
-            pb_end   = timezone.make_aware(dt.combine(pb.date, pb.end_time))
+            pb_start = _asuncion(dt.combine(pb.date, pb.start_time))
+            pb_end   = _asuncion(dt.combine(pb.date, pb.end_time))
             conflicts = [
                 b for b in confirmed_bookings
                 if b['start_datetime'] < pb_end and b['end_datetime'] > pb_start
@@ -243,13 +249,13 @@ class PageViewAdmin(admin.ModelAdmin):
         conflicting_pb_pairs = []
         seen_ids = set()
         for i, pb1 in enumerate(active_pbs):
-            pb1_start = timezone.make_aware(dt.combine(pb1.date, pb1.start_time))
-            pb1_end   = timezone.make_aware(dt.combine(pb1.date, pb1.end_time))
+            pb1_start = _asuncion(dt.combine(pb1.date, pb1.start_time))
+            pb1_end   = _asuncion(dt.combine(pb1.date, pb1.end_time))
             for pb2 in active_pbs[i + 1:]:
                 if pb1.resource_id != pb2.resource_id:
                     continue
-                pb2_start = timezone.make_aware(dt.combine(pb2.date, pb2.start_time))
-                pb2_end   = timezone.make_aware(dt.combine(pb2.date, pb2.end_time))
+                pb2_start = _asuncion(dt.combine(pb2.date, pb2.start_time))
+                pb2_end   = _asuncion(dt.combine(pb2.date, pb2.end_time))
                 if pb1_start < pb2_end and pb1_end > pb2_start:
                     if pb1.pk not in seen_ids:
                         conflicting_pb_pairs.append({'obj': pb1})
@@ -299,7 +305,7 @@ class PageViewAdmin(admin.ModelAdmin):
         # Vencidas sin gestionar en el período (status PENDING y fecha ya pasó)
         expired_unmanaged_count = sum(
             1 for pb in all_period.filter(status='PENDING')
-            if timezone.make_aware(dt.combine(pb.date, pb.start_time)) < now
+            if _asuncion(dt.combine(pb.date, pb.start_time)) < now
         )
 
         pending_conversion_rate = _pct(confirmed_count, total_period)
@@ -308,7 +314,7 @@ class PageViewAdmin(admin.ModelAdmin):
         # ── Datos por día para gráfico apilado de gestión ─────────────────────
         from django.db.models.functions import TruncDate as TD
 
-        local_tz = timezone.get_current_timezone()
+        local_tz = _ASUNCION
 
         def _pending_by_day_status(status_filter):
             qs = (
@@ -326,21 +332,21 @@ class PageViewAdmin(admin.ModelAdmin):
         # Vencidas sin acción: PENDING cuya fecha de turno < hoy, agrupadas por created_at date
         expired_pbs = [
             pb for pb in all_period.filter(status='PENDING')
-            if timezone.make_aware(dt.combine(pb.date, pb.start_time)) < now
+            if _asuncion(dt.combine(pb.date, pb.start_time)) < now
         ]
         expired_by_day: dict = {}
         for pb in expired_pbs:
-            d = timezone.localtime(pb.created_at).date()
+            d = pb.created_at.astimezone(_ASUNCION).date()
             expired_by_day[d] = expired_by_day.get(d, 0) + 1
 
         # Esperando respuesta: PENDING cuyo turno aún no llegó
         waiting_pbs = [
             pb for pb in all_period.filter(status='PENDING')
-            if timezone.make_aware(dt.combine(pb.date, pb.start_time)) >= now
+            if _asuncion(dt.combine(pb.date, pb.start_time)) >= now
         ]
         waiting_by_day: dict = {}
         for pb in waiting_pbs:
-            d = timezone.localtime(pb.created_at).date()
+            d = pb.created_at.astimezone(_ASUNCION).date()
             waiting_by_day[d] = waiting_by_day.get(d, 0) + 1
 
         # Construir arrays en orden cronológico (igual que chart_days en stats)
@@ -411,8 +417,8 @@ class PageViewAdmin(admin.ModelAdmin):
                         'status': pb.status,
                         'hours_waiting': round((now - pb.created_at).total_seconds() / 3600, 1),
                         'overlaps': any(
-                            b['start_datetime'] < timezone.make_aware(dt.combine(pb.date, pb.end_time))
-                            and b['end_datetime'] > timezone.make_aware(dt.combine(pb.date, pb.start_time))
+                            b['start_datetime'] < _asuncion(dt.combine(pb.date, pb.end_time))
+                            and b['end_datetime'] > _asuncion(dt.combine(pb.date, pb.start_time))
                             for b in confirmed_bookings
                         ),
                     }
