@@ -380,7 +380,11 @@ class PageViewAdmin(admin.ModelAdmin):
             'upcoming_days_json': json.dumps([
                 {
                     'date': d['date'].strftime('%-d/%m'),
-                    'full_date': d['date'].strftime('%A %-d de %B'),
+                    'full_date': (
+                        ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'][d['date'].weekday()]
+                        + d['date'].strftime(' %-d de ')
+                        + ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'][d['date'].month - 1]
+                    ),
                     'pending_count': d['pending_count'],
                     'confirmed_count': d['confirmed_count'],
                     'bookings': d['bookings'],
