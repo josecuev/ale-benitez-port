@@ -4,7 +4,7 @@ from django.utils.safestring import mark_safe
 from datetime import datetime, date as date_cls
 import re
 import zoneinfo
-from .models import Resource, WeeklyAvailability, Booking, PendingBooking
+from .models import Resource, WeeklyAvailability, Booking, PendingBooking, Product, FractaboxPackage
 
 _ASUNCION = zoneinfo.ZoneInfo('America/Asuncion')
 
@@ -98,6 +98,20 @@ class WeeklyAvailabilityInline(admin.TabularInline):
     extra = 1
 
 
+class FractaboxPackageInline(admin.TabularInline):
+    model = FractaboxPackage
+    extra = 1
+    fields = ('label', 'slots_to_block', 'order', 'is_active')
+
+
+@admin.register(Product)
+class ProductAdmin(admin.ModelAdmin):
+    list_display = ('name', 'product_type', 'resource', 'is_public', 'is_active')
+    list_editable = ('is_public', 'is_active')
+    list_filter = ('product_type', 'is_active', 'is_public')
+    inlines = [FractaboxPackageInline]
+
+
 @admin.register(Resource)
 class ResourceAdmin(admin.ModelAdmin):
     list_display = ('name', 'whatsapp_number', 'active')
@@ -114,7 +128,7 @@ class WeeklyAvailabilityAdmin(admin.ModelAdmin):
 
 @admin.register(Booking)
 class BookingAdmin(admin.ModelAdmin):
-    list_display = ('resource', 'formatted_date', 'end_datetime', 'client_phone', 'status_display', 'whatsapp_contact')
+    list_display = ('resource', 'formatted_date', 'end_datetime', 'client_phone', 'product', 'status_display', 'whatsapp_contact')
     list_filter = ('resource', 'status', 'start_datetime')
     search_fields = ('resource__name', 'notes', 'client_phone')
     readonly_fields = ('created_at', 'whatsapp_link_display')
@@ -315,7 +329,7 @@ class BookingAdmin(admin.ModelAdmin):
 class PendingBookingAdmin(admin.ModelAdmin):
     list_display = (
         'estado_gestion', 'formatted_date', 'horario',
-        'client_name', 'resource', 'recibida_hace', 'whatsapp_link_list',
+        'client_name', 'product', 'resource', 'recibida_hace', 'whatsapp_link_list',
     )
     list_filter = (EstadoGestionFilter, 'resource')
     search_fields = ('reservation_code', 'client_name', 'client_phone')
