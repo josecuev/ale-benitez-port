@@ -2,18 +2,24 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
-from django.utils import timezone
+from django.db.models import Prefetch
 from datetime import datetime, timedelta, time
 import json
 import re
-from .models import Resource, WeeklyAvailability, Booking, PendingBooking, generate_reservation_code
+from .models import Resource, WeeklyAvailability, Booking, PendingBooking, Product, FractaboxPackage, generate_reservation_code
 
 
 def calendario(request):
-    resources = Resource.objects.filter(active=True)
-    context = {
-        'resources': resources,
-    }
+    if request.user.is_staff:
+        products = Product.objects.filter(is_active=True)
+    else:
+        products = Product.objects.filter(is_active=True, is_public=True)
+
+    products = products.prefetch_related(
+        Prefetch('packages', queryset=FractaboxPackage.objects.filter(is_active=True).order_by('order'))
+    ).select_related('resource')
+
+    context = {'products': products}
     return render(request, 'app_fractalia/calendario.html', context)
 
 
@@ -68,6 +74,8 @@ def _get_slots_for_date(resource, fecha):
 def disponibilidad_api(request):
     fecha_str = request.GET.get('fecha')
     resource_id = request.GET.get('resource_id')
+    product_type = request.GET.get('product_type', '')
+    slots_needed_str = request.GET.get('slots_needed', '')
 
     if not fecha_str or not resource_id:
         return JsonResponse({'error': 'Parámetros fecha y resource_id requeridos'}, status=400)
@@ -89,6 +97,18 @@ def disponibilidad_api(request):
             'slots': [],
             'message': 'No hay horario disponible para este día'
         })
+
+    # Para FRACTABOX: calcular available_as_start
+    if product_type == 'FRACTABOX' and slots_needed_str:
+        try:
+            slots_needed = int(slots_needed_str)
+        except ValueError:
+            slots_needed = 1
+        for i, slot in enumerate(slots):
+            if slot['available'] and i + slots_needed <= len(slots):
+                slot['available_as_start'] = all(slots[i + j]['available'] for j in range(slots_needed))
+            else:
+                slot['available_as_start'] = False
 
     return JsonResponse({
         'slots': slots,
@@ -153,20 +173,19 @@ def create_pending_booking(request):
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
 
-    resource_id = data.get('resource_id')
+    product_id = data.get('product_id')
     fecha_str = data.get('fecha')
     start_time_str = data.get('start_time')
     end_time_str = data.get('end_time')
     client_name = data.get('client_name', '').strip()
     client_phone = data.get('client_phone', '').strip()
 
-    if not all([resource_id, fecha_str, start_time_str, end_time_str]):
+    if not all([product_id, fecha_str, start_time_str, end_time_str]):
         return JsonResponse(
-            {'error': 'Parámetros requeridos: resource_id, fecha, start_time, end_time'},
+            {'error': 'Parámetros requeridos: product_id, fecha, start_time, end_time'},
             status=400
         )
 
-    # Validar formato de teléfono si se proporciona
     if client_phone and not re.match(r'^09\d{8}$', client_phone):
         return JsonResponse(
             {'error': 'Formato de teléfono inválido. Debe ser 09XXXXXXXX'},
@@ -174,19 +193,20 @@ def create_pending_booking(request):
         )
 
     try:
-        resource = Resource.objects.get(id=resource_id, active=True)
+        product = Product.objects.select_related('resource').get(id=product_id, is_active=True)
         fecha = datetime.strptime(fecha_str, '%Y-%m-%d').date()
         start_time = datetime.strptime(start_time_str, '%H:%M').time()
         end_time = datetime.strptime(end_time_str, '%H:%M').time()
-    except Resource.DoesNotExist:
-        return JsonResponse({'error': 'Recurso no encontrado'}, status=404)
+    except Product.DoesNotExist:
+        return JsonResponse({'error': 'Producto no encontrado'}, status=404)
     except ValueError:
         return JsonResponse({'error': 'Formato de fecha/hora inválido'}, status=400)
 
     try:
         code = generate_reservation_code()
         pending = PendingBooking.objects.create(
-            resource=resource,
+            resource=product.resource,
+            product=product,
             date=fecha,
             start_time=start_time,
             end_time=end_time,
@@ -195,11 +215,54 @@ def create_pending_booking(request):
             client_phone=client_phone,
             status='PENDING'
         )
-
-        return JsonResponse({
-            'code': pending.reservation_code,
-            'id': pending.id,
-        }, status=201)
-
+        return JsonResponse({'code': pending.reservation_code, 'id': pending.id}, status=201)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+
+@require_http_methods(['POST'])
+@csrf_exempt
+def reserva_directa(request):
+    """Crea una Booking confirmada directamente (solo is_staff). Usado para Sesión Fotográfica."""
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return JsonResponse({'error': 'No autorizado'}, status=403)
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+    product_id = data.get('product_id')
+    fecha_str = data.get('fecha')
+    start_time_str = data.get('start_time')
+    end_time_str = data.get('end_time')
+
+    if not all([product_id, fecha_str, start_time_str, end_time_str]):
+        return JsonResponse(
+            {'error': 'Parámetros requeridos: product_id, fecha, start_time, end_time'},
+            status=400
+        )
+
+    try:
+        product = Product.objects.select_related('resource').get(id=product_id, is_active=True)
+        fecha = datetime.strptime(fecha_str, '%Y-%m-%d').date()
+        start_dt = datetime.combine(fecha, datetime.strptime(start_time_str, '%H:%M').time())
+        end_dt = datetime.combine(fecha, datetime.strptime(end_time_str, '%H:%M').time())
+    except Product.DoesNotExist:
+        return JsonResponse({'error': 'Producto no encontrado'}, status=404)
+    except ValueError:
+        return JsonResponse({'error': 'Formato de fecha/hora inválido'}, status=400)
+
+    try:
+        booking = Booking(
+            resource=product.resource,
+            product=product,
+            start_datetime=start_dt,
+            end_datetime=end_dt,
+            status='CONFIRMED',
+        )
+        skip = (product.product_type == 'FOTO')
+        booking.save(skip_availability_check=skip)
+        return JsonResponse({'id': booking.id}, status=201)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
