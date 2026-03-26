@@ -250,6 +250,7 @@ def reserva_directa(request):
     start_time_str = data.get('start_time')
     end_time_str = data.get('end_time')
     client_name = data.get('client_name', '').strip()
+    client_phone = data.get('client_phone', '').strip()
 
     if not all([product_id, fecha_str, start_time_str, end_time_str]):
         return JsonResponse(
@@ -259,6 +260,12 @@ def reserva_directa(request):
 
     if not client_name:
         return JsonResponse({'error': 'El nombre del cliente es requerido'}, status=400)
+
+    if client_phone and not re.match(r'^09\d{8}$', client_phone):
+        return JsonResponse(
+            {'error': 'Formato de teléfono inválido. Debe ser 09XXXXXXXX'},
+            status=400
+        )
 
     try:
         product = Product.objects.select_related('resource').get(id=product_id, is_active=True)
@@ -276,17 +283,41 @@ def reserva_directa(request):
             package = get_fractabox_package_for_hours(product, duration_hours)
             if not package:
                 return JsonResponse({'error': 'Duración inválida para Fractabox'}, status=400)
+        booking_code = generate_reservation_code()
+        pending = None
+
+        if product.product_type == 'FOTO':
+            pending = PendingBooking.objects.create(
+                resource=product.resource,
+                product=product,
+                date=fecha,
+                start_time=start_dt.time(),
+                end_time=end_dt.time(),
+                reservation_code=booking_code,
+                client_name=client_name,
+                client_phone=client_phone,
+                status='CONFIRMED',
+                notes=f'Código de reserva: {booking_code}',
+            )
+
         booking = Booking(
             resource=product.resource,
             product=product,
             fractabox_package=package if product.product_type == 'FRACTABOX' else None,
+            reservation_code=booking_code,
             client_name=client_name,
+            client_phone=client_phone,
             start_datetime=start_dt,
             end_datetime=end_dt,
             status='CONFIRMED',
+            notes=f'Código de reserva: {booking_code}',
         )
         skip = (product.product_type == 'FOTO')
         booking.save(skip_availability_check=skip)
-        return JsonResponse({'id': booking.id}, status=201)
+        return JsonResponse({
+            'id': booking.id,
+            'code': booking.reservation_code,
+            'pending_id': pending.id if pending else None,
+        }, status=201)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)

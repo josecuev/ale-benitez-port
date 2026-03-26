@@ -96,6 +96,7 @@ class Booking(models.Model):
         FractaboxPackage, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='bookings', verbose_name='Paquete Fractabox'
     )
+    reservation_code = models.CharField(max_length=4, unique=True, null=True, blank=True, verbose_name='Código')
     client_name = models.CharField(max_length=100, blank=True, verbose_name='Cliente')
     start_datetime = models.DateTimeField(verbose_name='Inicio')
     end_datetime = models.DateTimeField(verbose_name='Fin')
@@ -164,7 +165,10 @@ def generate_reservation_code():
     chars = string.ascii_uppercase + string.digits
     while True:
         code = ''.join(random.choices(chars, k=4))
-        if not PendingBooking.objects.filter(reservation_code=code).exists():
+        if (
+            not PendingBooking.objects.filter(reservation_code=code).exists()
+            and not Booking.objects.filter(reservation_code=code).exists()
+        ):
             return code
 
 

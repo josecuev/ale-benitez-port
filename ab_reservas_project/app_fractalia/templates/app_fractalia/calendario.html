@@ -901,12 +901,35 @@
                     />
                     <div class="confirm-name-error" id="confirmFotoNameError"></div>
                 </div>
+                <div class="confirm-name-group">
+                    <label class="confirm-name-label" for="confirmFotoPhone">Teléfono opcional</label>
+                    <input
+                        type="tel"
+                        id="confirmFotoPhone"
+                        inputmode="numeric"
+                        pattern="09[0-9]{8}"
+                        placeholder="Ej: 0981234567"
+                        maxlength="10"
+                        autocomplete="tel"
+                        class="confirm-name-input"
+                    />
+                    <div class="confirm-name-error" id="confirmFotoPhoneError"></div>
+                </div>
                 <div class="confirm-actions">
                     <button class="confirm-btn confirm-btn-whatsapp" id="confirmFotoSubmitBtn">
                         Crear reserva
                     </button>
                 </div>
                 <button class="confirm-close" id="confirmFotoCancel">Cancelar</button>
+            </div>
+
+            <!-- Paso FOTO: confirmación directa final -->
+            <div id="confirmStepFotoDone" style="display:none;">
+                <div class="confirm-icon">✅</div>
+                <h2 class="confirm-title">Reserva creada</h2>
+                <p class="confirm-subtitle">La sesión fotográfica quedó confirmada de forma directa.</p>
+                <div class="confirm-summary" id="confirmSummaryFotoDone"></div>
+                <button class="confirm-close" id="confirmFotoDoneClose">Cerrar</button>
             </div>
 
             <!-- Paso 2: Código y opciones de contacto -->
@@ -1564,6 +1587,9 @@
             const clientName = document.getElementById('confirmFotoName').value.trim();
             const clientNameInput = document.getElementById('confirmFotoName');
             const clientNameError = document.getElementById('confirmFotoNameError');
+            const clientPhone = document.getElementById('confirmFotoPhone').value.trim();
+            const clientPhoneInput = document.getElementById('confirmFotoPhone');
+            const clientPhoneError = document.getElementById('confirmFotoPhoneError');
             const { startTime, endTime } = _pendingSlots;
             const submitBtn = document.getElementById('confirmFotoSubmitBtn');
 
@@ -1576,6 +1602,16 @@
 
             clientNameError.textContent = '';
             clientNameInput.classList.remove('input-error');
+
+            if (clientPhone && !/^09\d{8}$/.test(clientPhone)) {
+                clientPhoneError.textContent = 'Ingresá un número válido (09XXXXXXXX) o dejalo vacío.';
+                clientPhoneInput.classList.add('input-error');
+                clientPhoneInput.focus();
+                return;
+            }
+
+            clientPhoneError.textContent = '';
+            clientPhoneInput.classList.remove('input-error');
             submitBtn.disabled = true;
             submitBtn.textContent = 'Creando reserva...';
 
@@ -1592,6 +1628,7 @@
                         start_time: startTime,
                         end_time: endTime,
                         client_name: clientName,
+                        client_phone: clientPhone,
                     }),
                 });
 
@@ -1602,10 +1639,9 @@
 
                 // Mostrar paso 2 simplificado (sin código ni WhatsApp)
                 document.getElementById('confirmStepFoto').style.display = 'none';
-                document.getElementById('confirmStep2').style.display = 'block';
-                document.getElementById('confirmCode').textContent = '✓';
-                document.getElementById('confirmWhatsappBtn').style.display = 'none';
-                document.getElementById('confirmCallBtn').style.display = 'none';
+                document.getElementById('confirmStepFotoDone').style.display = 'block';
+                document.getElementById('confirmSummaryFotoDone').innerHTML =
+                    `${currentProduct.name} · ${selectedDate} · ${startTime} a ${endTime}<br><strong>A nombre de:</strong> ${clientName}`;
 
             } catch (error) {
                 console.error('Error:', error);
@@ -1630,12 +1666,17 @@
             document.getElementById('confirmName').value = '';
             document.getElementById('confirmPhone').value = '';
             document.getElementById('confirmFotoName').value = '';
+            document.getElementById('confirmFotoPhone').value = '';
             document.getElementById('confirmNameError').textContent = '';
             document.getElementById('confirmPhoneError').textContent = '';
             document.getElementById('confirmFotoNameError').textContent = '';
+            document.getElementById('confirmFotoPhoneError').textContent = '';
             document.getElementById('confirmName').classList.remove('input-error');
             document.getElementById('confirmPhone').classList.remove('input-error');
             document.getElementById('confirmFotoName').classList.remove('input-error');
+            document.getElementById('confirmFotoPhone').classList.remove('input-error');
+            document.getElementById('confirmStepFotoDone').style.display = 'none';
+            document.getElementById('confirmSummaryFotoDone').innerHTML = '';
 
             // Reset FRACTABOX / FOTO state
             fractaboxStartSlot = null;
