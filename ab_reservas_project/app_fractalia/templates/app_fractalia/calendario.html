@@ -622,6 +622,27 @@
             min-height: 16px;
         }
 
+        .confirm-selection-chip {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding: 11px 14px;
+            border: 2px solid #ffe927;
+            border-radius: 6px;
+            background: #faf5e4;
+            color: #222;
+        }
+
+        .confirm-selection-chip strong {
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .confirm-selection-chip span {
+            font-size: 12px;
+            color: #666;
+        }
+
         /* Product selector */
         .product-selector {
             background-color: #fff;
@@ -820,7 +841,7 @@
                 <div class="confirm-summary" id="confirmSummary"></div>
 
                 <div class="confirm-name-group">
-                    <label class="confirm-name-label">¿Qué queres alquilar?</label>
+                    <label class="confirm-name-label" id="confirmSelectionLabel">Producto seleccionado</label>
                     <div class="resource-radio-group" id="resourceRadioGroup">
                         <!-- Populated by JS -->
                     </div>
@@ -868,6 +889,18 @@
                 <div class="confirm-icon">📷</div>
                 <h2 class="confirm-title">Confirmar sesión</h2>
                 <div class="confirm-summary" id="confirmSummaryFoto"></div>
+                <div class="confirm-name-group">
+                    <label class="confirm-name-label" for="confirmFotoName">A nombre de</label>
+                    <input
+                        class="confirm-name-input"
+                        type="text"
+                        id="confirmFotoName"
+                        placeholder="Ej: María García"
+                        maxlength="100"
+                        autocomplete="name"
+                    />
+                    <div class="confirm-name-error" id="confirmFotoNameError"></div>
+                </div>
                 <div class="confirm-actions">
                     <button class="confirm-btn confirm-btn-whatsapp" id="confirmFotoSubmitBtn">
                         Crear reserva
@@ -959,6 +992,18 @@
             return cookieValue;
         }
 
+        function setConfirmSelectionLabel(productType) {
+            const label = document.getElementById('confirmSelectionLabel');
+            if (!label) return;
+            if (productType === 'FRACTABOX') {
+                label.textContent = 'Paquete seleccionado';
+            } else if (productType === 'FOTO') {
+                label.textContent = 'Sesión seleccionada';
+            } else {
+                label.textContent = 'Producto seleccionado';
+            }
+        }
+
         // Inicializar selector de productos
         function initProductSelector() {
             const container = document.getElementById('productSelector');
@@ -1013,8 +1058,6 @@
                 btn.textContent = pkg.label;
                 btn.addEventListener('click', () => {
                     selectedPackage = pkg;
-                    fractaboxStartSlot = null;
-                    selectedSlots.clear();
                     updateSelectionCount();
                     document.querySelectorAll('.package-btn').forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
@@ -1254,6 +1297,20 @@
 
                 slotsList.appendChild(slotDiv);
             });
+
+            if (productType === 'FRACTABOX' && fractaboxStartSlot) {
+                applySavedFractaboxSelection(data.slots);
+            }
+        }
+
+        function applySavedFractaboxSelection(slots) {
+            const savedSlot = slots.find(slot => slot.time === fractaboxStartSlot);
+            if (!savedSlot || !savedSlot.available_as_start) {
+                fractaboxStartSlot = null;
+                updateSelectionCount();
+                return;
+            }
+            highlightFractaboxBlock(slots);
         }
 
         function highlightFractaboxBlock(slots) {
@@ -1353,12 +1410,23 @@
             const month = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
                            'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'][date.getMonth()];
 
-            const summaryText = `${currentProduct.name} · ${dayName} ${dayNum} de ${month} · ${startTime} a ${endTime}`;
-            document.getElementById('confirmSummary').innerHTML = summaryText;
+            let summaryHtml = '';
+            if (productType === 'FRACTABOX') {
+                const packageLabel = selectedPackage ? selectedPackage.label : '';
+                summaryHtml = `
+                    <strong>Fractabox</strong><br>
+                    Paquete: ${packageLabel}<br>
+                    Fecha: ${dayName} ${dayNum} de ${month}<br>
+                    Inicio: ${startTime}
+                `;
+            } else {
+                summaryHtml = `${currentProduct.name} · ${dayName} ${dayNum} de ${month} · ${startTime} a ${endTime}`;
+            }
+            document.getElementById('confirmSummary').innerHTML = summaryHtml;
 
             // FOTO: modal simplificado sin nombre/teléfono
             if (productType === 'FOTO') {
-                document.getElementById('confirmSummaryFoto').innerHTML = summaryText;
+                document.getElementById('confirmSummaryFoto').innerHTML = `${currentProduct.name} · ${dayName} ${dayNum} de ${month} · ${startTime} a ${endTime}`;
                 document.getElementById('confirmStep1').style.display = 'none';
                 document.getElementById('confirmStepFoto').style.display = 'block';
                 document.getElementById('confirmStep2').style.display = 'none';
@@ -1366,9 +1434,16 @@
                 return;
             }
 
-            // ALQUILER / FRACTABOX: mostrar nombre del producto en lugar de radios
-            document.getElementById('resourceRadioGroup').innerHTML =
-                `<div style="padding:10px 14px;border:2px solid #ffe927;border-radius:6px;font-weight:600;">${currentProduct.name}</div>`;
+            // ALQUILER / FRACTABOX: mostrar una etiqueta clara del producto o paquete seleccionado
+            if (productType === 'FRACTABOX') {
+                const packageLabel = selectedPackage ? selectedPackage.label : '';
+                document.getElementById('resourceRadioGroup').innerHTML =
+                    `<div class="confirm-selection-chip"><strong>${packageLabel}</strong><span>Fractabox</span></div>`;
+            } else {
+                document.getElementById('resourceRadioGroup').innerHTML =
+                    `<div class="confirm-selection-chip"><strong>${currentProduct.name}</strong><span>Producto seleccionado</span></div>`;
+            }
+            setConfirmSelectionLabel(productType);
 
             document.getElementById('confirmName').value = '';
             document.getElementById('confirmPhone').value = '';
@@ -1387,6 +1462,7 @@
 
         // Step 2: Submit name and phone → POST → show code
         async function submitPendingBooking() {
+            const productType = currentProduct ? currentProduct.product_type : 'ALQUILER';
             const name = document.getElementById('confirmName').value.trim();
             const phone = document.getElementById('confirmPhone').value.trim();
             const nameInput = document.getElementById('confirmName');
@@ -1458,7 +1534,10 @@
                 const dayNum = date.getDate();
                 const month = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
                                'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'][date.getMonth()];
-                const message = `Hola! Soy ${name}. Quiero reservar ${productName} el ${dayName} ${dayNum} de ${month} de ${startTime} a ${endTime}. Mi código de reserva es: ${code}`;
+                const packageLabel = selectedPackage ? selectedPackage.label : '';
+                const message = productType === 'FRACTABOX'
+                    ? `Hola! Soy ${name}. Quiero reservar Fractabox (${packageLabel}) el ${dayName} ${dayNum} de ${month} a las ${startTime}. Mi código de reserva es: ${code}`
+                    : `Hola! Soy ${name}. Quiero reservar ${productName} el ${dayName} ${dayNum} de ${month} de ${startTime} a ${endTime}. Mi código de reserva es: ${code}`;
 
                 // Set step 2 content
                 document.getElementById('confirmCode').textContent = code;
@@ -1482,8 +1561,21 @@
         }
 
         async function submitDirectBooking() {
+            const clientName = document.getElementById('confirmFotoName').value.trim();
+            const clientNameInput = document.getElementById('confirmFotoName');
+            const clientNameError = document.getElementById('confirmFotoNameError');
             const { startTime, endTime } = _pendingSlots;
             const submitBtn = document.getElementById('confirmFotoSubmitBtn');
+
+            if (!clientName) {
+                clientNameError.textContent = 'Por favor ingresá el nombre de la persona.';
+                clientNameInput.classList.add('input-error');
+                clientNameInput.focus();
+                return;
+            }
+
+            clientNameError.textContent = '';
+            clientNameInput.classList.remove('input-error');
             submitBtn.disabled = true;
             submitBtn.textContent = 'Creando reserva...';
 
@@ -1499,6 +1591,7 @@
                         fecha: selectedDate,
                         start_time: startTime,
                         end_time: endTime,
+                        client_name: clientName,
                     }),
                 });
 
@@ -1536,10 +1629,13 @@
             // Clean up form inputs
             document.getElementById('confirmName').value = '';
             document.getElementById('confirmPhone').value = '';
+            document.getElementById('confirmFotoName').value = '';
             document.getElementById('confirmNameError').textContent = '';
             document.getElementById('confirmPhoneError').textContent = '';
+            document.getElementById('confirmFotoNameError').textContent = '';
             document.getElementById('confirmName').classList.remove('input-error');
             document.getElementById('confirmPhone').classList.remove('input-error');
+            document.getElementById('confirmFotoName').classList.remove('input-error');
 
             // Reset FRACTABOX / FOTO state
             fractaboxStartSlot = null;

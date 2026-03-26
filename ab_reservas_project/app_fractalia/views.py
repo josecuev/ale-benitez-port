@@ -6,7 +6,10 @@ from django.db.models import Prefetch
 from datetime import datetime, timedelta, time
 import json
 import re
-from .models import Resource, WeeklyAvailability, Booking, PendingBooking, Product, FractaboxPackage, generate_reservation_code
+from .models import (
+    Resource, WeeklyAvailability, Booking, PendingBooking, Product, FractaboxPackage,
+    generate_reservation_code, get_fractabox_package_for_hours,
+)
 
 
 def calendario(request):
@@ -186,6 +189,9 @@ def create_pending_booking(request):
             status=400
         )
 
+    if not client_name:
+        return JsonResponse({'error': 'El nombre del cliente es requerido'}, status=400)
+
     if client_phone and not re.match(r'^09\d{8}$', client_phone):
         return JsonResponse(
             {'error': 'Formato de teléfono inválido. Debe ser 09XXXXXXXX'},
@@ -203,6 +209,13 @@ def create_pending_booking(request):
         return JsonResponse({'error': 'Formato de fecha/hora inválido'}, status=400)
 
     try:
+        duration_hours = int(
+            (datetime.combine(fecha, end_time) - datetime.combine(fecha, start_time)).total_seconds() / 3600
+        )
+        if product.product_type == 'FRACTABOX':
+            package = get_fractabox_package_for_hours(product, duration_hours)
+            if not package:
+                return JsonResponse({'error': 'Duración inválida para Fractabox'}, status=400)
         code = generate_reservation_code()
         pending = PendingBooking.objects.create(
             resource=product.resource,
@@ -236,12 +249,16 @@ def reserva_directa(request):
     fecha_str = data.get('fecha')
     start_time_str = data.get('start_time')
     end_time_str = data.get('end_time')
+    client_name = data.get('client_name', '').strip()
 
     if not all([product_id, fecha_str, start_time_str, end_time_str]):
         return JsonResponse(
             {'error': 'Parámetros requeridos: product_id, fecha, start_time, end_time'},
             status=400
         )
+
+    if not client_name:
+        return JsonResponse({'error': 'El nombre del cliente es requerido'}, status=400)
 
     try:
         product = Product.objects.select_related('resource').get(id=product_id, is_active=True)
@@ -254,9 +271,16 @@ def reserva_directa(request):
         return JsonResponse({'error': 'Formato de fecha/hora inválido'}, status=400)
 
     try:
+        duration_hours = int((end_dt - start_dt).total_seconds() / 3600)
+        if product.product_type == 'FRACTABOX':
+            package = get_fractabox_package_for_hours(product, duration_hours)
+            if not package:
+                return JsonResponse({'error': 'Duración inválida para Fractabox'}, status=400)
         booking = Booking(
             resource=product.resource,
             product=product,
+            fractabox_package=package if product.product_type == 'FRACTABOX' else None,
+            client_name=client_name,
             start_datetime=start_dt,
             end_datetime=end_dt,
             status='CONFIRMED',

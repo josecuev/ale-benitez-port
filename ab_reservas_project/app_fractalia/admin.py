@@ -4,7 +4,10 @@ from django.utils.safestring import mark_safe
 from datetime import datetime, date as date_cls
 import re
 import zoneinfo
-from .models import Resource, WeeklyAvailability, Booking, PendingBooking, Product, FractaboxPackage
+from .models import (
+    Resource, WeeklyAvailability, Booking, PendingBooking, Product, FractaboxPackage,
+    get_fractabox_package_for_hours,
+)
 
 _ASUNCION = zoneinfo.ZoneInfo('America/Asuncion')
 
@@ -128,16 +131,16 @@ class WeeklyAvailabilityAdmin(admin.ModelAdmin):
 
 @admin.register(Booking)
 class BookingAdmin(admin.ModelAdmin):
-    list_display = ('resource', 'formatted_date', 'end_datetime', 'client_phone', 'product', 'status_display', 'whatsapp_contact')
+    list_display = ('resource', 'formatted_date', 'client_name', 'end_datetime', 'client_phone', 'product', 'status_display', 'whatsapp_contact')
     list_filter = ('resource', 'status', 'start_datetime')
-    search_fields = ('resource__name', 'notes', 'client_phone')
+    search_fields = ('resource__name', 'notes', 'client_phone', 'client_name', 'product__name')
     readonly_fields = ('created_at', 'whatsapp_link_display')
     date_hierarchy = 'start_datetime'
     ordering = ('start_datetime',)
     actions = ['cancelar', 'reactivar']
     fieldsets = (
         ('Información de la reserva', {
-            'fields': ('resource', 'product', 'status', 'client_phone')
+            'fields': ('resource', 'product', 'status', 'client_name', 'client_phone')
         }),
         ('Horario', {
             'fields': ('start_datetime', 'end_datetime')
@@ -187,6 +190,7 @@ class BookingAdmin(admin.ModelAdmin):
         date = obj.start_datetime.date()
         start_time = obj.start_datetime.strftime('%H:%M')
         end_time = obj.end_datetime.strftime('%H:%M')
+        duration_hours = int((obj.end_datetime - obj.start_datetime).total_seconds() / 3600)
 
         days = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
         months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -198,6 +202,11 @@ class BookingAdmin(admin.ModelAdmin):
 
         resource_name = obj.resource.name
         code = ''
+        product_name = resource_name
+        if obj.product and obj.product.product_type == 'FRACTABOX':
+            package = get_fractabox_package_for_hours(obj.product, duration_hours)
+            if package:
+                product_name = f'Fractabox ({package.label})'
 
         # Extract code from notes if available
         if obj.notes:
@@ -205,7 +214,10 @@ class BookingAdmin(admin.ModelAdmin):
             if match:
                 code = f' (Código: {match.group(1)})'
 
-        message = f'Hola, te escribo en relacion a tu reserva en {resource_name} el {date_str} de {start_time} a {end_time}{code}.'
+        if obj.product and obj.product.product_type == 'FRACTABOX':
+            message = f'Hola, te escribo en relacion a tu reserva de {product_name} el {date_str} a las {start_time}{code}.'
+        else:
+            message = f'Hola, te escribo en relacion a tu reserva en {resource_name} el {date_str} de {start_time} a {end_time}{code}.'
 
         return f"https://wa.me/{obj.resource.whatsapp_number}?text={message}"
 
@@ -443,6 +455,9 @@ class PendingBookingAdmin(admin.ModelAdmin):
         date = obj.date
         start_time = obj.start_time.strftime('%H:%M')
         end_time = obj.end_time.strftime('%H:%M')
+        duration_hours = int(
+            (datetime.combine(date, obj.end_time) - datetime.combine(date, obj.start_time)).total_seconds() / 3600
+        )
 
         days = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
         months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -454,11 +469,22 @@ class PendingBookingAdmin(admin.ModelAdmin):
 
         resource_name = obj.resource.name
         code = obj.reservation_code
+        product_name = resource_name
+        if obj.product and obj.product.product_type == 'FRACTABOX':
+            package = get_fractabox_package_for_hours(obj.product, duration_hours)
+            if package:
+                product_name = f'Fractabox ({package.label})'
 
-        message = (
-            f'Hola, te escribo en relacion a tu pre-reserva en {resource_name} '
-            f'el {date_str} de {start_time} a {end_time} (Código: {code}).'
-        )
+        if obj.product and obj.product.product_type == 'FRACTABOX':
+            message = (
+                f'Hola, te escribo en relacion a tu pre-reserva de {product_name} '
+                f'el {date_str} a las {start_time} (Código: {code}).'
+            )
+        else:
+            message = (
+                f'Hola, te escribo en relacion a tu pre-reserva en {resource_name} '
+                f'el {date_str} de {start_time} a {end_time} (Código: {code}).'
+            )
 
         return f"https://wa.me/{obj.resource.whatsapp_number}?text={message}"
 
@@ -514,10 +540,18 @@ class PendingBookingAdmin(admin.ModelAdmin):
                 try:
                     start_dt = _asuncion(datetime.combine(pending.date, pending.start_time))
                     end_dt   = _asuncion(datetime.combine(pending.date, pending.end_time))
+                    duration_hours = int((end_dt - start_dt).total_seconds() / 3600)
+                    fractabox_package = None
+                    if pending.product and pending.product.product_type == 'FRACTABOX':
+                        fractabox_package = get_fractabox_package_for_hours(pending.product, duration_hours)
+                        if not fractabox_package:
+                            raise ValueError('Duración inválida para Fractabox')
 
                     Booking.objects.create(
                         resource=pending.resource,
                         product=pending.product,
+                        fractabox_package=fractabox_package,
+                        client_name=pending.client_name,
                         start_datetime=start_dt,
                         end_datetime=end_dt,
                         status='CONFIRMED',

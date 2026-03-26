@@ -96,6 +96,7 @@ class Booking(models.Model):
         FractaboxPackage, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='bookings', verbose_name='Paquete Fractabox'
     )
+    client_name = models.CharField(max_length=100, blank=True, verbose_name='Cliente')
     start_datetime = models.DateTimeField(verbose_name='Inicio')
     end_datetime = models.DateTimeField(verbose_name='Fin')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='CONFIRMED', verbose_name='Estado')
@@ -165,6 +166,13 @@ def generate_reservation_code():
         code = ''.join(random.choices(chars, k=4))
         if not PendingBooking.objects.filter(reservation_code=code).exists():
             return code
+
+
+def get_fractabox_package_for_hours(product, hours):
+    """Return the active Fractabox package matching a slot duration."""
+    if not product or product.product_type != 'FRACTABOX':
+        return None
+    return product.packages.filter(is_active=True, slots_to_block=hours).first()
 
 
 class PendingBooking(models.Model):
