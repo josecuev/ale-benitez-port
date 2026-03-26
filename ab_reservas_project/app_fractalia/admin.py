@@ -137,7 +137,7 @@ class BookingAdmin(admin.ModelAdmin):
     actions = ['cancelar', 'reactivar']
     fieldsets = (
         ('Información de la reserva', {
-            'fields': ('resource', 'status', 'client_phone')
+            'fields': ('resource', 'product', 'status', 'client_phone')
         }),
         ('Horario', {
             'fields': ('start_datetime', 'end_datetime')
@@ -342,7 +342,7 @@ class PendingBookingAdmin(admin.ModelAdmin):
             'fields': ('client_name', 'client_phone', 'whatsapp_link_display')
         }),
         ('Detalles de la pre-reserva', {
-            'fields': ('reservation_code', 'resource', 'date', 'start_time', 'end_time', 'status')
+            'fields': ('reservation_code', 'resource', 'product', 'date', 'start_time', 'end_time', 'status')
         }),
         ('Notas', {
             'fields': ('notes',)
@@ -517,6 +517,7 @@ class PendingBookingAdmin(admin.ModelAdmin):
 
                     Booking.objects.create(
                         resource=pending.resource,
+                        product=pending.product,
                         start_datetime=start_dt,
                         end_datetime=end_dt,
                         status='CONFIRMED',
