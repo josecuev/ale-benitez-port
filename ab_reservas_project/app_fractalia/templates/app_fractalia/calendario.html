@@ -49,6 +49,171 @@
             letter-spacing: 1px;
         }
 
+        .public-landing {
+            flex: 1;
+            min-height: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background:
+                radial-gradient(circle at top left, rgba(255, 233, 39, 0.24), transparent 40%),
+                linear-gradient(180deg, #fff 0%, #f6f6f6 100%);
+            overflow-y: auto;
+        }
+
+        .public-landing.visible {
+            display: flex;
+        }
+
+        .public-landing-card {
+            width: 100%;
+            max-width: 720px;
+            background: #fff;
+            border: 2px solid #000;
+            border-radius: 20px;
+            padding: 28px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+        }
+
+        .public-landing-kicker {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1.4px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .public-landing-title {
+            font-family: 'Bebas Neue', 'Arial Black', sans-serif;
+            font-size: 38px;
+            letter-spacing: 1.5px;
+            line-height: 0.95;
+            margin-bottom: 10px;
+        }
+
+        .public-landing-copy {
+            font-size: 14px;
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 22px;
+            max-width: 56ch;
+        }
+
+        .public-option-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .public-option-btn {
+            text-align: left;
+            border: 2px solid #ddd;
+            border-radius: 16px;
+            padding: 18px;
+            background: #fafafa;
+            cursor: pointer;
+            transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+            min-height: 170px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .public-option-btn:hover {
+            transform: translateY(-2px);
+            border-color: #000;
+            background: #fffbe6;
+        }
+
+        .public-option-tag {
+            display: inline-flex;
+            align-items: center;
+            align-self: flex-start;
+            gap: 6px;
+            padding: 5px 10px;
+            border-radius: 999px;
+            background: #ffe927;
+            color: #000;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            margin-bottom: 12px;
+        }
+
+        .public-option-name {
+            font-family: 'Bebas Neue', 'Arial Black', sans-serif;
+            font-size: 30px;
+            letter-spacing: 1px;
+            line-height: 0.95;
+            margin-bottom: 8px;
+        }
+
+        .public-option-desc {
+            font-size: 13px;
+            color: #555;
+            line-height: 1.55;
+        }
+
+        .public-option-foot {
+            margin-top: 16px;
+            font-size: 12px;
+            color: #777;
+        }
+
+        .public-mode .product-selector {
+            display: none;
+        }
+
+        .public-mode .header {
+            display: none;
+        }
+
+        .public-mode .main-container,
+        .public-mode .action-bar,
+        .public-mode .slots-container,
+        .public-mode .days-container {
+            display: none;
+        }
+
+        .public-mode .main-container.visible,
+        .public-mode .action-bar.visible,
+        .public-mode .slots-container.visible,
+        .public-mode .days-container.visible {
+            display: flex;
+        }
+
+        @media (max-width: 640px) {
+            html, body {
+                height: auto;
+                min-height: 100%;
+                overflow-y: auto;
+                overflow-x: hidden;
+            }
+
+            body {
+                min-height: 100vh;
+            }
+
+            .public-landing {
+                align-items: flex-start;
+                padding: 16px 16px 28px;
+            }
+
+            .public-option-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .public-landing-card {
+                padding: 22px;
+            }
+
+            .public-landing-title {
+                font-size: 32px;
+            }
+        }
+
         /* Resource radio buttons (inside modal) */
         .resource-radio-group {
             display: flex;
@@ -737,6 +902,14 @@
                 font-size: 24px;
             }
 
+            .public-landing {
+                padding-top: 12px;
+            }
+
+            .public-landing-card {
+                border-radius: 16px;
+            }
+
             .day-btn {
                 min-width: 60px;
                 padding: 8px 6px;
@@ -776,10 +949,24 @@
         }
     </style>
 </head>
-<body>
-    <div class="header">
+<body class="{% if not request.user.is_staff %}public-mode{% endif %}">
+    <div class="header {% if not request.user.is_staff %}public-header{% endif %}">
         <h1>FRACTALIA</h1>
         <p>Calendario de disponibilidad</p>
+    </div>
+
+    <div class="public-landing {% if not request.user.is_staff %}visible{% endif %}" id="publicLanding">
+        <div class="public-landing-card">
+            <div class="public-landing-kicker">Elegí tu modalidad</div>
+            <div class="public-landing-title">Reservá tu espacio</div>
+            <div class="public-landing-copy">
+                Antes de ver el calendario, elegí cómo querés reservar.
+            </div>
+            <div class="public-option-grid" id="publicOptionGrid">
+                <!-- Populated by JS -->
+            </div>
+            <div class="public-option-foot">Seleccioná una opción para continuar.</div>
+        </div>
     </div>
 
     <!-- Selector de producto -->
@@ -971,12 +1158,14 @@
         const PENDING_BOOKING_ENDPOINT = '{% url "fractalia_create_pending_booking" %}';
         const RESERVA_DIRECTA_ENDPOINT = '{% url "fractalia_reserva_directa" %}';
         const IS_STAFF = {{ request.user.is_staff|yesno:"true,false" }};
+        const PUBLIC_MODE = !IS_STAFF;
 
         const PRODUCTS = [
             {% for p in products %}
             {
                 id: {{ p.id }},
                 name: "{{ p.name }}",
+                description: "{{ p.description|escapejs }}",
                 product_type: "{{ p.product_type }}",
                 resource_id: {{ p.resource_id }},
                 whatsapp: "{{ p.resource.whatsapp_number }}",
@@ -989,7 +1178,7 @@
             {% endfor %}
         ];
 
-        let currentProduct = PRODUCTS.length > 0 ? PRODUCTS[0] : null;
+        let currentProduct = IS_STAFF && PRODUCTS.length > 0 ? PRODUCTS[0] : null;
         let selectedPackage = null;
         let fractaboxStartSlot = null;
 
@@ -1034,22 +1223,62 @@
             PRODUCTS.forEach((product, index) => {
                 const btn = document.createElement('button');
                 btn.className = 'product-btn' + (index === 0 ? ' active' : '');
+                btn.dataset.productId = product.id;
                 btn.textContent = product.name;
                 btn.addEventListener('click', () => selectProduct(product, btn));
                 container.appendChild(btn);
             });
         }
 
-        function selectProduct(product, btn) {
+        function renderPublicLanding() {
+            const container = document.getElementById('publicOptionGrid');
+            const landing = document.getElementById('publicLanding');
+            if (!container || !landing) return;
+
+            container.innerHTML = '';
+            const publicProducts = PRODUCTS.filter(product =>
+                product.product_type === 'FRACTABOX' || product.product_type === 'ALQUILER'
+            );
+
+            publicProducts.forEach((product) => {
+                const btn = document.createElement('button');
+                btn.className = 'public-option-btn';
+                btn.type = 'button';
+                btn.innerHTML = `
+                    <div>
+                        <div class="public-option-tag">${product.product_type === 'FRACTABOX' ? 'Fractabox' : 'Alquiler de estudio'}</div>
+                        <div class="public-option-name">${product.name}</div>
+                        <div class="public-option-desc">${product.description || 'Seleccioná esta opción para continuar con tu reserva.'}</div>
+                    </div>
+                    <div class="public-option-foot">Elegir esta opción</div>
+                `;
+                btn.addEventListener('click', () => startPublicProduct(product));
+                container.appendChild(btn);
+            });
+
+            landing.classList.add('visible');
+        }
+
+        function startPublicProduct(product) {
+            document.body.classList.remove('public-mode');
+            document.getElementById('publicLanding').classList.remove('visible');
+            initProductSelector();
             currentProduct = product;
+            const activeBtn = document.querySelector(`.product-btn[data-product-id="${product.id}"]`);
+            initProductSelection(product, activeBtn);
+        }
+
+        function initProductSelection(product, btn) {
             selectedSlots.clear();
             selectedPackage = null;
             fractaboxStartSlot = null;
             updateSelectionCount();
             hideValidationError();
 
-            document.querySelectorAll('.product-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
+            if (btn) {
+                document.querySelectorAll('.product-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            }
 
             const packageSelector = document.getElementById('packageSelector');
             if (product.product_type === 'FRACTABOX' && product.packages.length > 0) {
@@ -1069,6 +1298,11 @@
             } else {
                 document.getElementById('slotsList').innerHTML = '';
             }
+        }
+
+        function selectProduct(product, btn) {
+            currentProduct = product;
+            initProductSelection(product, btn);
         }
 
         function initPackageSelector(product) {
@@ -1798,13 +2032,14 @@
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
-            initProductSelector();
-            if (currentProduct) {
-                if (currentProduct.product_type === 'FRACTABOX' && currentProduct.packages.length > 0) {
-                    initPackageSelector(currentProduct);
-                    document.getElementById('packageSelector').style.display = 'flex';
+            if (PUBLIC_MODE) {
+                document.body.classList.add('public-mode');
+                renderPublicLanding();
+            } else {
+                initProductSelector();
+                if (currentProduct) {
+                    initProductSelection(currentProduct, document.querySelector('.product-btn.active'));
                 }
-                loadDaysBatch(null, BATCH_SIZE);
             }
         });
     </script>

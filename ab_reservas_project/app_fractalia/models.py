@@ -53,6 +53,7 @@ class Product(models.Model):
 
     resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name='products', verbose_name='Recurso')
     name = models.CharField(max_length=200, verbose_name='Nombre')
+    description = models.TextField(blank=True, default='', verbose_name='Descripción')
     product_type = models.CharField(max_length=20, choices=PRODUCT_TYPE_CHOICES, verbose_name='Tipo')
     is_public = models.BooleanField(default=True, verbose_name='Visible al público')
     is_active = models.BooleanField(default=True, verbose_name='Activo')
