@@ -70,6 +70,7 @@ class FractaboxPackage(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='packages', verbose_name='Producto')
     label = models.CharField(max_length=100, verbose_name='Etiqueta')
     slots_to_block = models.PositiveIntegerField(verbose_name='Slots a bloquear')
+    duration_minutes = models.PositiveIntegerField(null=True, blank=True, verbose_name='Duración (minutos)', help_text='Duración real del paquete en minutos, para mostrar la hora de fin correctamente.')
     order = models.PositiveIntegerField(default=0, verbose_name='Orden')
     is_active = models.BooleanField(default=True, verbose_name='Activo')
 
@@ -178,6 +179,13 @@ def get_fractabox_package_for_hours(product, hours):
     if not product or product.product_type != 'FRACTABOX':
         return None
     return product.packages.filter(is_active=True, slots_to_block=hours).first()
+
+
+def get_fractabox_package_for_minutes(product, minutes):
+    """Return the active Fractabox package matching a duration in minutes."""
+    if not product or product.product_type != 'FRACTABOX':
+        return None
+    return product.packages.filter(is_active=True, duration_minutes=minutes).first()
 
 
 class PendingBooking(models.Model):

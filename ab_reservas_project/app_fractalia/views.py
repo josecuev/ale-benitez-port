@@ -8,7 +8,7 @@ import json
 import re
 from .models import (
     Resource, WeeklyAvailability, Booking, PendingBooking, Product, FractaboxPackage,
-    generate_reservation_code, get_fractabox_package_for_hours,
+    generate_reservation_code, get_fractabox_package_for_hours, get_fractabox_package_for_minutes,
 )
 
 
@@ -35,6 +35,7 @@ def calendario(request):
                 'id': pkg.id,
                 'label': pkg.label,
                 'slots_to_block': pkg.slots_to_block,
+                'duration_minutes': pkg.duration_minutes,
                 'order': pkg.order,
             }
             for pkg in p.packages.all()
@@ -96,6 +97,29 @@ def _get_slots_for_date(resource, fecha):
     return slots
 
 
+def _get_slots_for_date_staff(resource, fecha):
+    """Slots para admins: cubre el día completo (6-23h) sin restricción de WeeklyAvailability."""
+    slots = []
+    for current_hour in range(5, 23):
+        slot_start_time = time(hour=current_hour, minute=0)
+        slot_end_time = time(hour=current_hour + 1, minute=0)
+        slot_start_datetime = datetime.combine(fecha, slot_start_time)
+        slot_end_datetime = datetime.combine(fecha, slot_end_time)
+
+        overlapping_booking = Booking.objects.filter(
+            status='CONFIRMED',
+            start_datetime__lt=slot_end_datetime,
+            end_datetime__gt=slot_start_datetime
+        ).exists()
+
+        slots.append({
+            'time': slot_start_time.strftime('%H:%M'),
+            'available': not overlapping_booking,
+            'display': slot_start_time.strftime('%H:%M'),
+        })
+    return slots
+
+
 @require_http_methods(['GET'])
 def disponibilidad_api(request):
     fecha_str = request.GET.get('fecha')
@@ -116,7 +140,12 @@ def disponibilidad_api(request):
     except Resource.DoesNotExist:
         return JsonResponse({'error': 'Recurso no encontrado'}, status=404)
 
-    slots = _get_slots_for_date(resource, fecha)
+    staff_mode = request.GET.get('staff_mode') == 'true' and request.user.is_staff
+
+    if staff_mode:
+        slots = _get_slots_for_date_staff(resource, fecha)
+    else:
+        slots = _get_slots_for_date(resource, fecha)
 
     if slots is None:
         return JsonResponse({
@@ -124,17 +153,25 @@ def disponibilidad_api(request):
             'message': 'No hay horario disponible para este día'
         })
 
-    # Para FRACTABOX: calcular available_as_start
+    # Para FRACTABOX: calcular available_as_start usando duración real en minutos
     if product_type == 'FRACTABOX' and slots_needed_str:
         try:
             slots_needed = int(slots_needed_str)
         except ValueError:
             slots_needed = 1
+
         for i, slot in enumerate(slots):
-            if slot['available'] and i + slots_needed <= len(slots):
-                slot['available_as_start'] = all(slots[i + j]['available'] for j in range(slots_needed))
-            else:
+            if not slot['available'] or i + slots_needed > len(slots):
                 slot['available_as_start'] = False
+                continue
+            slot_start_dt = datetime.combine(fecha, datetime.strptime(slot['time'], '%H:%M').time())
+            slot_end_dt = slot_start_dt + timedelta(hours=slots_needed)
+            overlaps = Booking.objects.filter(
+                status='CONFIRMED',
+                start_datetime__lt=slot_end_dt,
+                end_datetime__gt=slot_start_dt,
+            ).exists()
+            slot['available_as_start'] = not overlaps
 
     return JsonResponse({
         'slots': slots,
@@ -232,13 +269,23 @@ def create_pending_booking(request):
         return JsonResponse({'error': 'Formato de fecha/hora inválido'}, status=400)
 
     try:
-        duration_hours = int(
-            (datetime.combine(fecha, end_time) - datetime.combine(fecha, start_time)).total_seconds() / 3600
-        )
+        start_dt = datetime.combine(fecha, start_time)
+        end_dt = datetime.combine(fecha, end_time)
+        duration_hours = int((end_dt - start_dt).total_seconds() / 3600)
         if product.product_type == 'FRACTABOX':
             package = get_fractabox_package_for_hours(product, duration_hours)
             if not package:
                 return JsonResponse({'error': 'Duración inválida para Fractabox'}, status=400)
+
+        # Verificar solapamiento con reservas confirmadas
+        overlapping = Booking.objects.filter(
+            status='CONFIRMED',
+            start_datetime__lt=end_dt,
+            end_datetime__gt=start_dt,
+        ).exists()
+        if overlapping:
+            return JsonResponse({'error': 'Este horario ya está ocupado por otra reserva.'}, status=409)
+
         code = generate_reservation_code()
         pending = PendingBooking.objects.create(
             resource=product.resource,
@@ -259,7 +306,7 @@ def create_pending_booking(request):
 @require_http_methods(['POST'])
 @csrf_exempt
 def reserva_directa(request):
-    """Crea una Booking confirmada directamente (solo is_staff). Usado para Sesión Fotográfica."""
+    """Crea una Booking confirmada directamente (solo is_staff). Salta restricciones de horario."""
     if not request.user.is_authenticated or not request.user.is_staff:
         return JsonResponse({'error': 'No autorizado'}, status=403)
 
@@ -302,45 +349,46 @@ def reserva_directa(request):
 
     try:
         duration_hours = int((end_dt - start_dt).total_seconds() / 3600)
+        package = None
         if product.product_type == 'FRACTABOX':
             package = get_fractabox_package_for_hours(product, duration_hours)
-            if not package:
-                return JsonResponse({'error': 'Duración inválida para Fractabox'}, status=400)
-        booking_code = generate_reservation_code()
-        pending = None
+            # Admin puede saltar la restricción de paquete si no encuentra uno exacto
+            # En ese caso se guarda sin paquete asociado
 
-        if product.product_type == 'FOTO':
-            pending = PendingBooking.objects.create(
-                resource=product.resource,
-                product=product,
-                date=fecha,
-                start_time=start_dt.time(),
-                end_time=end_dt.time(),
-                reservation_code=booking_code,
-                client_name=client_name,
-                client_phone=client_phone,
-                status='CONFIRMED',
-                notes=f'Código de reserva: {booking_code}',
-            )
+        booking_code = generate_reservation_code()
+
+        # Siempre crear PendingBooking como registro de origen
+        pending = PendingBooking.objects.create(
+            resource=product.resource,
+            product=product,
+            date=fecha,
+            start_time=start_dt.time(),
+            end_time=end_dt.time(),
+            reservation_code=booking_code,
+            client_name=client_name,
+            client_phone=client_phone,
+            status='CONFIRMED',
+            notes=f'Reserva directa por admin. Código: {booking_code}',
+        )
 
         booking = Booking(
             resource=product.resource,
             product=product,
-            fractabox_package=package if product.product_type == 'FRACTABOX' else None,
+            fractabox_package=package,
             reservation_code=booking_code,
             client_name=client_name,
             client_phone=client_phone,
             start_datetime=start_dt,
             end_datetime=end_dt,
             status='CONFIRMED',
-            notes=f'Código de reserva: {booking_code}',
+            notes=f'Reserva directa por admin. Código: {booking_code}',
         )
-        skip = (product.product_type == 'FOTO')
-        booking.save(skip_availability_check=skip)
+        # Admins siempre saltan la restricción de horario de disponibilidad
+        booking.save(skip_availability_check=True)
         return JsonResponse({
             'id': booking.id,
             'code': booking.reservation_code,
-            'pending_id': pending.id if pending else None,
+            'pending_id': pending.id,
         }, status=201)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)

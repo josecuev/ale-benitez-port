@@ -433,10 +433,12 @@
             cursor: pointer;
         }
 
-        .time-slot.available:hover {
-            background-color: #fff4cc;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            border-color: #ffc107;
+        @media (hover: hover) {
+            .time-slot.available:hover {
+                background-color: #fff4cc;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                border-color: #ffc107;
+            }
         }
 
         .time-slot.available.selected {
@@ -492,6 +494,12 @@
         .time-slot-status.occupied {
             background-color: #ddd;
             color: #666;
+        }
+
+        .time-slot-status.slot-error {
+            background-color: #ffe4e4;
+            color: #cc0000;
+            font-weight: bold;
         }
 
         .empty-state {
@@ -1112,7 +1120,7 @@
     <!-- Action bar -->
     <div class="action-bar" id="actionBar">
         <div class="selection-info">
-            <span id="selectionCount">0 horarios</span> seleccionados
+            <span id="selectionRange">Horario seleccionado: –</span>
         </div>
         <div class="action-buttons">
             <div class="error-message-inline" id="validationError"></div>
@@ -1174,8 +1182,22 @@
                     <button class="confirm-btn confirm-btn-whatsapp" id="confirmSubmitBtn">
                         Confirmar pre-reserva
                     </button>
+                    {% if request.user.is_staff %}
+                    <button class="confirm-btn" id="confirmDirectBtn" style="background:#000;color:#ffe927;border:none;">
+                        Reserva directa
+                    </button>
+                    {% endif %}
                 </div>
                 <button class="confirm-close" id="confirmCancel">Cancelar</button>
+            </div>
+
+            <!-- Paso reserva directa admin: confirmación final -->
+            <div id="confirmStepDirectDone" style="display:none;">
+                <div class="confirm-icon">✅</div>
+                <h2 class="confirm-title">Reserva confirmada</h2>
+                <p class="confirm-subtitle">La reserva quedó registrada directamente.</p>
+                <div class="confirm-summary" id="confirmSummaryDirectDone"></div>
+                <button class="confirm-close" id="confirmDirectDoneClose">Cerrar</button>
             </div>
 
             <!-- Paso FOTO: confirmación directa (solo staff) -->
@@ -1278,7 +1300,7 @@
                 whatsapp: "{{ p.resource.whatsapp_number }}",
                 packages: [
                     {% for pkg in p.packages.all %}
-                    { id: {{ pkg.id }}, label: "{{ pkg.label }}", slots_to_block: {{ pkg.slots_to_block }} }{% if not forloop.last %},{% endif %}
+                    { id: {{ pkg.id }}, label: "{{ pkg.label }}", slots_to_block: {{ pkg.slots_to_block }}, duration_minutes: {{ pkg.duration_minutes|default:"null" }} }{% if not forloop.last %},{% endif %}
                     {% endfor %}
                 ]
             }{% if not forloop.last %},{% endif %}
@@ -1509,13 +1531,13 @@
 
         // Validate if slots are contiguous and valid duration
         function isValidReservation(slots) {
-            const VALID_DURATIONS = [2, 4, 6, 8];  // Only 2, 4, 6, or 8 hours allowed
+            const VALID_DURATIONS = [2, 4, 6, 8];  // Only 2, 4, 6, or 8 hours allowed (public)
 
             // Check if any slots selected
             if (slots.size === 0) return false;
 
-            // Check duration is valid (2, 4, 6, or 8 hours)
-            if (!VALID_DURATIONS.includes(slots.size)) return false;
+            // Staff puede reservar cualquier duración (mínimo 1h), el público solo 2/4/6/8
+            if (!IS_STAFF && !VALID_DURATIONS.includes(slots.size)) return false;
 
             // Check if slots are contiguous
             const hours = Array.from(slots)
@@ -1644,6 +1666,9 @@
             if (currentProduct.product_type === 'FRACTABOX' && selectedPackage) {
                 url += `&product_type=FRACTABOX&slots_needed=${selectedPackage.slots_to_block}`;
             }
+            if (IS_STAFF) {
+                url += '&staff_mode=true';
+            }
 
             fetch(url)
                 .then(response => response.json())
@@ -1714,11 +1739,22 @@
                     });
 
                 } else if (productType === 'FRACTABOX') {
-                    if (slot.available_as_start) {
+                    if (slot.available) {
                         slotDiv.addEventListener('click', () => {
-                            fractaboxStartSlot = slot.time;
-                            highlightFractaboxBlock(data.slots);
-                            updateSelectionCount();
+                            // Limpiar error previo en cualquier slot
+                            document.querySelectorAll('.time-slot-status.slot-error').forEach(el => {
+                                el.classList.remove('slot-error');
+                                el.textContent = 'Disponible';
+                            });
+                            if (slot.available_as_start) {
+                                fractaboxStartSlot = slot.time;
+                                highlightFractaboxBlock(data.slots);
+                                updateSelectionCount();
+                            } else {
+                                const statusEl = slotDiv.querySelector('.time-slot-status');
+                                statusEl.classList.add('slot-error');
+                                statusEl.textContent = 'No caben las horas del paquete';
+                            }
                         });
                     } else {
                         slotDiv.classList.remove('available');
@@ -1795,11 +1831,39 @@
                 isValid = count >= 1 && isContiguous(selectedSlots);
             }
 
-            document.getElementById('selectionCount').textContent = `${count} horario${count !== 1 ? 's' : ''}`;
             document.getElementById('reserveBtn').disabled = !isValid;
 
+            // Mostrar rango horario seleccionado
+            const rangeEl = document.getElementById('selectionRange');
+            if (count > 0) {
+                let rangeStart, rangeEnd;
+                if (productType === 'FRACTABOX' && fractaboxStartSlot) {
+                    if (selectedPackage && selectedPackage.duration_minutes) {
+                        const [h, m] = fractaboxStartSlot.split(':').map(Number);
+                        const endTotal = h * 60 + m + selectedPackage.duration_minutes;
+                        const endH = Math.floor(endTotal / 60).toString().padStart(2, '0');
+                        const endM = (endTotal % 60).toString().padStart(2, '0');
+                        rangeEl.textContent = `Horario seleccionado: ${fractaboxStartSlot} – ${endH}:${endM}`;
+                    } else if (selectedPackage) {
+                        rangeEl.textContent = `Horario seleccionado: ${fractaboxStartSlot} · ${selectedPackage.label}`;
+                    } else {
+                        rangeEl.textContent = `Horario seleccionado: ${fractaboxStartSlot}`;
+                    }
+                } else if ((productType === 'ALQUILER' || productType === 'FOTO') && selectedSlots.size > 0) {
+                    const sorted = Array.from(selectedSlots).sort();
+                    rangeStart = sorted[0];
+                    const lastHour = parseInt(sorted[sorted.length - 1].split(':')[0]) + 1;
+                    rangeEnd = `${lastHour.toString().padStart(2, '0')}:00`;
+                    rangeEl.textContent = `Horario seleccionado: ${rangeStart} – ${rangeEnd}`;
+                } else {
+                    rangeEl.textContent = 'Horario seleccionado: –';
+                }
+            } else {
+                rangeEl.textContent = 'Horario seleccionado: –';
+            }
+
             if (productType === 'ALQUILER' && count > 0 && !isValid) {
-                if (![2, 4, 6, 8].includes(count)) {
+                if (!IS_STAFF && ![2, 4, 6, 8].includes(count)) {
                     showValidationError(`❌ Duración inválida (${count}h). Las reservas deben ser de 2, 4, 6 u 8 horas.`);
                 } else if (!isContiguous(selectedSlots)) {
                     showValidationError('❌ Horarios no contiguos. Los horarios deben ser consecutivos sin interrupciones.');
@@ -1840,6 +1904,7 @@
             } else if (productType === 'FRACTABOX') {
                 if (!fractaboxStartSlot || !selectedPackage) return;
                 startTime = fractaboxStartSlot;
+                // endTime usa slots_to_block (horas completas) para bloquear el calendario correctamente
                 const endHour = parseInt(fractaboxStartSlot.split(':')[0]) + selectedPackage.slots_to_block;
                 endTime = `${endHour.toString().padStart(2, '0')}:00`;
             } else if (productType === 'FOTO') {
@@ -1859,17 +1924,7 @@
                            'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'][date.getMonth()];
 
             let summaryHtml = '';
-            if (productType === 'FRACTABOX') {
-                const packageLabel = selectedPackage ? selectedPackage.label : '';
-                summaryHtml = `
-                    <strong>Fractabox</strong><br>
-                    Paquete: ${packageLabel}<br>
-                    Fecha: ${dayName} ${dayNum} de ${month}<br>
-                    Inicio: ${startTime}
-                `;
-            } else {
-                summaryHtml = `${currentProduct.name} · ${dayName} ${dayNum} de ${month} · ${startTime} a ${endTime}`;
-            }
+            summaryHtml = `${currentProduct.name} · ${dayName} ${dayNum} de ${month} · ${startTime} a ${endTime}`;
             document.getElementById('confirmSummary').innerHTML = summaryHtml;
 
             // FOTO: modal simplificado sin nombre/teléfono
@@ -1985,9 +2040,7 @@
                 const month = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
                                'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'][date.getMonth()];
                 const packageLabel = selectedPackage ? selectedPackage.label : '';
-                const message = productType === 'FRACTABOX'
-                    ? `Hola! Soy ${name}. Quiero reservar Fractabox (${packageLabel}) el ${dayName} ${dayNum} de ${month} a las ${startTime}. Mi código de reserva es: ${code}`
-                    : `Hola! Soy ${name}. Quiero reservar ${productName} el ${dayName} ${dayNum} de ${month} de ${startTime} a ${endTime}. Mi código de reserva es: ${code}`;
+                const message = `Hola! Soy ${name}. Quiero reservar ${productName} el ${dayName} ${dayNum} de ${month} de ${startTime} a ${endTime}. Mi código de reserva es: ${code}`;
 
                 // Set step 2 content
                 document.getElementById('confirmCode').textContent = code;
@@ -2079,6 +2132,83 @@
             }
         }
 
+        // Staff: Reserva directa desde el modal de pre-reserva (step 1)
+        async function submitDirectBookingFromStep1() {
+            if (!IS_STAFF) return;
+
+            const name = document.getElementById('confirmName').value.trim();
+            const phone = document.getElementById('confirmPhone').value.trim();
+            const nameInput = document.getElementById('confirmName');
+            const phoneInput = document.getElementById('confirmPhone');
+            const nameError = document.getElementById('confirmNameError');
+            const phoneError = document.getElementById('confirmPhoneError');
+
+            if (!name) {
+                nameError.textContent = 'Por favor ingresá el nombre.';
+                nameInput.classList.add('input-error');
+                nameInput.focus();
+                return;
+            }
+            nameError.textContent = '';
+            nameInput.classList.remove('input-error');
+
+            if (phone && !/^09\d{8}$/.test(phone)) {
+                phoneError.textContent = 'Ingresá un número válido (09XXXXXXXX) o dejalo vacío.';
+                phoneInput.classList.add('input-error');
+                phoneInput.focus();
+                return;
+            }
+            phoneError.textContent = '';
+            phoneInput.classList.remove('input-error');
+
+            const directBtn = document.getElementById('confirmDirectBtn');
+            directBtn.disabled = true;
+            directBtn.textContent = 'Creando reserva...';
+
+            const { startTime, endTime } = _pendingSlots;
+
+            try {
+                const response = await fetch(RESERVA_DIRECTA_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken'),
+                    },
+                    body: JSON.stringify({
+                        product_id: currentProduct.id,
+                        fecha: selectedDate,
+                        start_time: startTime,
+                        end_time: endTime,
+                        client_name: name,
+                        client_phone: phone,
+                    }),
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Error al crear la reserva');
+                }
+
+                const data = await response.json();
+                const date = new Date(selectedDate + 'T00:00:00');
+                const dayName = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][date.getDay()];
+                const dayNum = date.getDate();
+                const month = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                               'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'][date.getMonth()];
+
+                document.getElementById('confirmStep1').style.display = 'none';
+                document.getElementById('confirmStepDirectDone').style.display = 'block';
+                document.getElementById('confirmSummaryDirectDone').innerHTML =
+                    `<strong>${currentProduct.name}</strong><br>${dayName} ${dayNum} de ${month} · ${startTime} a ${endTime}<br><strong>A nombre de:</strong> ${name}${phone ? '<br><strong>Tel:</strong> ' + phone : ''}<br><strong>Código:</strong> ${data.code}`;
+
+            } catch (error) {
+                nameError.textContent = `Error: ${error.message}`;
+            } finally {
+                directBtn.disabled = false;
+                directBtn.textContent = 'Reserva directa';
+            }
+        }
+
         // Close modal and clean up panel
         function closeConfirmModal() {
             document.getElementById('confirmOverlay').classList.remove('visible');
@@ -2105,6 +2235,8 @@
             document.getElementById('confirmFotoPhone').classList.remove('input-error');
             document.getElementById('confirmStepFotoDone').style.display = 'none';
             document.getElementById('confirmSummaryFotoDone').innerHTML = '';
+            document.getElementById('confirmStepDirectDone').style.display = 'none';
+            document.getElementById('confirmSummaryDirectDone').innerHTML = '';
 
             // Reset FRACTABOX / FOTO state
             fractaboxStartSlot = null;
@@ -2178,6 +2310,13 @@
         document.getElementById('confirmFotoSubmitBtn').addEventListener('click', submitDirectBooking);
         document.getElementById('confirmFotoCancel').addEventListener('click', closeConfirmModal);
         document.getElementById('confirmFotoDoneClose').addEventListener('click', closeConfirmModal);
+
+        // Staff: botón reserva directa desde step 1
+        if (IS_STAFF) {
+            const directBtn = document.getElementById('confirmDirectBtn');
+            if (directBtn) directBtn.addEventListener('click', submitDirectBookingFromStep1);
+            document.getElementById('confirmDirectDoneClose').addEventListener('click', closeConfirmModal);
+        }
 
         // Close modal when clicking the dark overlay
         document.getElementById('confirmOverlay').addEventListener('click', (e) => {
