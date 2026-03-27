@@ -44,6 +44,44 @@ class WeeklyAvailability(models.Model):
         return f'{self.resource.name} - {self.get_weekday_display()} ({self.start_time}-{self.end_time})'
 
 
+class Product(models.Model):
+    PRODUCT_TYPE_CHOICES = [
+        ('ALQUILER', 'Alquiler de Estudio'),
+        ('FRACTABOX', 'Fractabox'),
+        ('FOTO', 'Sesión Fotográfica'),
+    ]
+
+    resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name='products', verbose_name='Recurso')
+    name = models.CharField(max_length=200, verbose_name='Nombre')
+    description = models.TextField(blank=True, default='', verbose_name='Descripción')
+    product_type = models.CharField(max_length=20, choices=PRODUCT_TYPE_CHOICES, verbose_name='Tipo')
+    is_public = models.BooleanField(default=True, verbose_name='Visible al público')
+    is_active = models.BooleanField(default=True, verbose_name='Activo')
+
+    class Meta:
+        verbose_name = 'Producto'
+        verbose_name_plural = 'Productos'
+
+    def __str__(self):
+        return self.name
+
+
+class FractaboxPackage(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='packages', verbose_name='Producto')
+    label = models.CharField(max_length=100, verbose_name='Etiqueta')
+    slots_to_block = models.PositiveIntegerField(verbose_name='Slots a bloquear')
+    order = models.PositiveIntegerField(default=0, verbose_name='Orden')
+    is_active = models.BooleanField(default=True, verbose_name='Activo')
+
+    class Meta:
+        verbose_name = 'Paquete Fractabox'
+        verbose_name_plural = 'Paquetes Fractabox'
+        ordering = ['order']
+
+    def __str__(self):
+        return f'{self.product.name} - {self.label}'
+
+
 class Booking(models.Model):
     STATUS_CHOICES = [
         ('CONFIRMED', 'Confirmada'),
@@ -51,6 +89,16 @@ class Booking(models.Model):
     ]
 
     resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name='bookings', verbose_name='Recurso')
+    product = models.ForeignKey(
+        Product, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='bookings', verbose_name='Producto'
+    )
+    fractabox_package = models.ForeignKey(
+        FractaboxPackage, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='bookings', verbose_name='Paquete Fractabox'
+    )
+    reservation_code = models.CharField(max_length=4, unique=True, null=True, blank=True, verbose_name='Código')
+    client_name = models.CharField(max_length=100, blank=True, verbose_name='Cliente')
     start_datetime = models.DateTimeField(verbose_name='Inicio')
     end_datetime = models.DateTimeField(verbose_name='Fin')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='CONFIRMED', verbose_name='Estado')
@@ -69,33 +117,23 @@ class Booking(models.Model):
         return f'{self.resource.name} - {self.start_datetime} ({self.status})'
 
     def clean(self):
-        # Validar que end_datetime sea después de start_datetime
         if self.end_datetime <= self.start_datetime:
             raise ValidationError('La hora final debe ser más tarde que la hora de inicio.')
 
-        # Si es una reserva confirmada, validar contra otras reservas confirmadas
         if self.status == 'CONFIRMED':
-            # Validar que no haya solapamiento con otras reservas confirmadas
+            # Cross-resource: el espacio físico es uno solo
             overlapping = Booking.objects.filter(
-                resource=self.resource,
                 status='CONFIRMED',
                 start_datetime__lt=self.end_datetime,
                 end_datetime__gt=self.start_datetime
             )
-
-            # Si esta reserva ya existe (tiene id), excluirla de la búsqueda
             if self.id:
                 overlapping = overlapping.exclude(id=self.id)
 
             if overlapping.exists():
-                raise ValidationError(
-                    f'Este horario ya está ocupado por otra reserva.'
-                )
+                raise ValidationError('Este horario ya está ocupado por otra reserva.')
 
-            # Solo validar horarios disponibles si es una reserva nueva (no tiene ID)
-            # Las reservas existentes ya fueron validadas en su creación
-            if not self.id:
-                # Validar que esté dentro de los horarios disponibles semanales
+            if not self.id and not getattr(self, '_skip_availability_check', False):
                 weekday = self.start_datetime.weekday()
                 availability = WeeklyAvailability.objects.filter(
                     resource=self.resource,
@@ -117,7 +155,8 @@ class Booking(models.Model):
                         f'No hay horario disponible configurado para {day_name}.'
                     )
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, skip_availability_check=False, **kwargs):
+        self._skip_availability_check = skip_availability_check
         self.full_clean()
         super().save(*args, **kwargs)
 
@@ -127,8 +166,18 @@ def generate_reservation_code():
     chars = string.ascii_uppercase + string.digits
     while True:
         code = ''.join(random.choices(chars, k=4))
-        if not PendingBooking.objects.filter(reservation_code=code).exists():
+        if (
+            not PendingBooking.objects.filter(reservation_code=code).exists()
+            and not Booking.objects.filter(reservation_code=code).exists()
+        ):
             return code
+
+
+def get_fractabox_package_for_hours(product, hours):
+    """Return the active Fractabox package matching a slot duration."""
+    if not product or product.product_type != 'FRACTABOX':
+        return None
+    return product.packages.filter(is_active=True, slots_to_block=hours).first()
 
 
 class PendingBooking(models.Model):
@@ -140,6 +189,10 @@ class PendingBooking(models.Model):
     ]
 
     resource = models.ForeignKey(Resource, on_delete=models.CASCADE, related_name='pending_bookings', verbose_name='Recurso')
+    product = models.ForeignKey(
+        Product, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='pending_bookings', verbose_name='Producto'
+    )
     date = models.DateField(verbose_name='Fecha')
     start_time = models.TimeField(verbose_name='Hora inicio')
     end_time = models.TimeField(verbose_name='Hora fin')
@@ -157,4 +210,3 @@ class PendingBooking(models.Model):
 
     def __str__(self):
         return f'{self.reservation_code} - {self.resource.name} ({self.status})'
-

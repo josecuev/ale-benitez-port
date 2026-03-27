@@ -13,16 +13,12 @@
 
         html, body {
             width: 100%;
-            height: 100%;
-            overflow: hidden;
         }
 
         body {
             font-family: system-ui, -apple-system, sans-serif;
             background-color: #f5f5f5;
             color: #333;
-            display: flex;
-            flex-direction: column;
         }
 
         .header {
@@ -30,8 +26,6 @@
             padding: 20px;
             text-align: center;
             border-bottom: 3px solid #000;
-            flex-shrink: 0;
-            z-index: 100;
         }
 
         .header h1 {
@@ -47,6 +41,158 @@
             color: #333;
             text-transform: uppercase;
             letter-spacing: 1px;
+        }
+
+        .public-landing {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            min-height: calc(100vh - 80px);
+            background:
+                radial-gradient(circle at top left, rgba(255, 233, 39, 0.24), transparent 40%),
+                linear-gradient(180deg, #fff 0%, #f6f6f6 100%);
+        }
+
+        .public-landing.visible {
+            display: flex;
+        }
+
+        .public-landing-card {
+            width: 100%;
+            max-width: 720px;
+            background: #fff;
+            border: 2px solid #000;
+            border-radius: 20px;
+            padding: 28px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+        }
+
+        .public-landing-kicker {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1.4px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .public-landing-title {
+            font-family: 'Bebas Neue', 'Arial Black', sans-serif;
+            font-size: 38px;
+            letter-spacing: 1.5px;
+            line-height: 0.95;
+            margin-bottom: 10px;
+        }
+
+        .public-landing-copy {
+            font-size: 14px;
+            color: #555;
+            line-height: 1.6;
+            margin-bottom: 22px;
+            max-width: 56ch;
+        }
+
+        .public-option-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .public-option-btn {
+            text-align: left;
+            border: 2px solid #ddd;
+            border-radius: 16px;
+            padding: 18px;
+            background: #fafafa;
+            cursor: pointer;
+            transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+            min-height: 170px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .public-option-btn:hover {
+            transform: translateY(-2px);
+            border-color: #000;
+            background: #fffbe6;
+        }
+
+        .public-option-tag {
+            display: inline-flex;
+            align-items: center;
+            align-self: flex-start;
+            gap: 6px;
+            padding: 5px 10px;
+            border-radius: 999px;
+            background: #ffe927;
+            color: #000;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            margin-bottom: 12px;
+        }
+
+        .public-option-name {
+            font-family: 'Bebas Neue', 'Arial Black', sans-serif;
+            font-size: 30px;
+            letter-spacing: 1px;
+            line-height: 0.95;
+            margin-bottom: 8px;
+        }
+
+        .public-option-desc {
+            font-size: 13px;
+            color: #555;
+            line-height: 1.55;
+        }
+
+        .public-option-foot {
+            margin-top: 16px;
+            font-size: 12px;
+            color: #777;
+        }
+
+        .public-mode .product-selector {
+            display: none;
+        }
+
+        .public-mode .header {
+            display: none;
+        }
+
+        .public-mode .main-container,
+        .public-mode .action-bar,
+        .public-mode .slots-container,
+        .public-mode .days-container {
+            display: none;
+        }
+
+        .public-mode .main-container.visible,
+        .public-mode .action-bar.visible,
+        .public-mode .slots-container.visible,
+        .public-mode .days-container.visible {
+            display: flex;
+        }
+
+        @media (max-width: 640px) {
+            .public-landing {
+                align-items: flex-start;
+                padding: 16px 16px 28px;
+            }
+
+            .public-option-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .public-landing-card {
+                padding: 22px;
+            }
+
+            .public-landing-title {
+                font-size: 32px;
+            }
         }
 
         /* Resource radio buttons (inside modal) */
@@ -88,22 +234,18 @@
         }
 
         .main-container {
-            flex: 1;
-            min-height: 0;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
         }
 
         /* Days scroll bar */
         .days-container {
             background-color: #fff;
-            border-bottom: 2px solid #ffe927;
+            border-bottom: 3px solid #000;
             padding: 12px 0;
             overflow-x: auto;
             overflow-y: hidden;
             -webkit-overflow-scrolling: touch;
-            flex-shrink: 0;
         }
 
         .days-list {
@@ -174,10 +316,6 @@
 
         /* Slots container */
         .slots-container {
-            flex: 1;
-            min-height: 0;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
             padding: 20px;
             background-color: #fff;
         }
@@ -383,7 +521,6 @@
             justify-content: space-between;
             gap: 12px;
             flex-wrap: wrap;
-            flex-shrink: 0;
         }
 
         .selection-info {
@@ -433,9 +570,12 @@
             inset: 0;
             background-color: rgba(0, 0, 0, 0.6);
             z-index: 1000;
+            /* Desktop: centrado */
             align-items: center;
             justify-content: center;
             padding: 20px;
+            overflow-y: auto;
+            overscroll-behavior: contain;
         }
 
         .confirm-overlay.visible {
@@ -451,6 +591,8 @@
             text-align: center;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             animation: modalIn 0.3s ease-out;
+            /* Evita que el modal quede cortado en viewport pequeño */
+            margin: auto;
         }
 
         @keyframes modalIn {
@@ -461,6 +603,35 @@
             to {
                 opacity: 1;
                 transform: scale(1) translateY(0);
+            }
+        }
+
+        /* Bottom sheet en mobile */
+        @media (max-width: 600px) {
+            .confirm-overlay {
+                align-items: flex-end;
+                justify-content: stretch;
+                padding: 0;
+            }
+
+            .confirm-modal {
+                border-radius: 18px 18px 0 0;
+                padding: 24px 20px 32px;
+                max-width: 100%;
+                max-height: 92vh;
+                overflow-y: auto;
+                overscroll-behavior: contain;
+                animation: sheetUp 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+                margin: 0;
+            }
+
+            @keyframes sheetUp {
+                from {
+                    transform: translateY(100%);
+                }
+                to {
+                    transform: translateY(0);
+                }
             }
         }
 
@@ -622,9 +793,213 @@
             min-height: 16px;
         }
 
+        .confirm-selection-chip {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding: 11px 14px;
+            border: 2px solid #ffe927;
+            border-radius: 6px;
+            background: #faf5e4;
+            color: #222;
+        }
+
+        .confirm-selection-chip strong {
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .confirm-selection-chip span {
+            font-size: 12px;
+            color: #666;
+        }
+
+        /* Product selector */
+        .product-selector {
+            background-color: #fff;
+            border-bottom: 1px solid #e8e8e8;
+            padding: 10px 14px;
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .product-btn {
+            white-space: nowrap;
+            padding: 8px 18px;
+            border: 2px solid #ddd;
+            border-radius: 20px;
+            background: #f0f0f0;
+            cursor: pointer;
+            font-size: 14px;
+            font-family: system-ui, -apple-system, sans-serif;
+            transition: all 0.15s ease;
+        }
+
+        .product-btn.active {
+            background-color: #ffe927;
+            border-color: #000;
+            font-weight: 600;
+        }
+
+        /* Package selector (FRACTABOX) */
+        .package-selector {
+            background-color: #fafafa;
+            border-bottom: 2px solid #ffe927;
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .package-selector-label {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #666;
+        }
+
+        .package-options {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .package-btn {
+            padding: 8px 16px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            background: #fff;
+            cursor: pointer;
+            font-size: 14px;
+            font-family: system-ui, -apple-system, sans-serif;
+            transition: all 0.15s ease;
+        }
+
+        .package-btn.active {
+            background-color: #ffe927;
+            border-color: #000;
+            font-weight: 600;
+        }
+
+        /* FRACTABOX: slot seleccionado como inicio muestra bloque */
+        .time-slot.fractabox-start {
+            background-color: #ffe927;
+            border-color: #000;
+        }
+
+        .time-slot.fractabox-blocked {
+            background-color: #fff3a0;
+            border-color: #ffe927;
+        }
+
+        /* FOTO: selección libre */
+        .time-slot.foto-selected {
+            background-color: #ffe927;
+            border-color: #000;
+        }
+
+        /* Header back button (public only) */
+        .header-back-btn {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: 2px solid #000;
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 13px;
+            font-family: system-ui, -apple-system, sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            color: #000;
+            transition: background 0.15s ease;
+        }
+
+        .header-back-btn:hover {
+            background: rgba(0,0,0,0.08);
+        }
+
+        .header {
+            position: relative;
+        }
+
+        /* Public package selection screen */
+        .public-package-screen {
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            min-height: calc(100vh - 80px);
+            background:
+                radial-gradient(circle at top left, rgba(255, 233, 39, 0.24), transparent 40%),
+                linear-gradient(180deg, #fff 0%, #f6f6f6 100%);
+        }
+
+        .public-package-screen.visible {
+            display: flex;
+        }
+
+        .public-package-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .public-package-btn {
+            text-align: left;
+            border: 2px solid #ddd;
+            border-radius: 16px;
+            padding: 18px 20px;
+            background: #fafafa;
+            cursor: pointer;
+            transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .public-package-btn:hover {
+            transform: translateY(-2px);
+            border-color: #000;
+            background: #fffbe6;
+        }
+
+        .public-package-btn-label {
+            font-family: 'Bebas Neue', 'Arial Black', sans-serif;
+            font-size: 26px;
+            letter-spacing: 1px;
+            color: #000;
+        }
+
+        .public-package-btn-arrow {
+            font-size: 20px;
+            color: #999;
+        }
+
+        @media (max-width: 640px) {
+            .public-package-screen {
+                align-items: flex-start;
+                padding: 16px 16px 28px;
+            }
+        }
+
         @media (max-width: 480px) {
             .header h1 {
                 font-size: 24px;
+            }
+
+            .public-landing {
+                padding-top: 12px;
+            }
+
+            .public-landing-card {
+                border-radius: 16px;
             }
 
             .day-btn {
@@ -666,13 +1041,55 @@
         }
     </style>
 </head>
-<body>
-    <div class="header">
+<body class="{% if not request.user.is_staff %}public-mode{% endif %}">
+    <div class="header {% if not request.user.is_staff %}public-header{% endif %}">
+        {% if not request.user.is_staff %}
+        <button class="header-back-btn" id="headerBackBtn" style="display:none;" onclick="goBackToLanding()">← Cambiar</button>
+        {% endif %}
         <h1>FRACTALIA</h1>
-        <p>Calendario de disponibilidad</p>
+        <p id="headerSubtitle">Calendario de disponibilidad</p>
     </div>
 
-    <div class="main-container">
+    <div class="public-landing {% if not request.user.is_staff %}visible{% endif %}" id="publicLanding">
+        <div class="public-landing-card">
+            <div class="public-landing-kicker">Elegí tu modalidad</div>
+            <div class="public-landing-title">Reservá tu espacio</div>
+            <div class="public-landing-copy">
+                Antes de ver el calendario, elegí cómo querés reservar.
+            </div>
+            <div class="public-option-grid" id="publicOptionGrid">
+                <!-- Populated by JS -->
+            </div>
+            <div class="public-option-foot">Seleccioná una opción para continuar.</div>
+        </div>
+    </div>
+
+    <!-- Pantalla pública de selección de paquete (Fractabox, paso 2 del wizard) -->
+    <div class="public-package-screen" id="publicPackageScreen" style="display:none;">
+        <div class="public-landing-card">
+            <div class="public-landing-kicker" id="publicPackageKicker">Fractabox</div>
+            <div class="public-landing-title">Elegí tu paquete</div>
+            <div class="public-landing-copy">Seleccioná la duración que mejor se adapte a tu sesión.</div>
+            <div class="public-package-grid" id="publicPackageGrid">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Selector de producto -->
+    <div class="product-selector" id="productSelector">
+        <!-- Populated by JS -->
+    </div>
+
+    <!-- Selector de paquete (solo FRACTABOX) -->
+    <div class="package-selector" id="packageSelector" style="display:none;">
+        <div class="package-selector-label">Elegí tu paquete</div>
+        <div class="package-options" id="packageOptions">
+            <!-- Populated by JS -->
+        </div>
+    </div>
+
+    <div class="main-container" id="mainContainer">
         <!-- Days scroll bar -->
         <div class="days-container">
             <div class="days-list" id="daysList">
@@ -693,7 +1110,7 @@
     </div>
 
     <!-- Action bar -->
-    <div class="action-bar">
+    <div class="action-bar" id="actionBar">
         <div class="selection-info">
             <span id="selectionCount">0 horarios</span> seleccionados
         </div>
@@ -718,7 +1135,7 @@
                 <div class="confirm-summary" id="confirmSummary"></div>
 
                 <div class="confirm-name-group">
-                    <label class="confirm-name-label">¿Qué queres alquilar?</label>
+                    <label class="confirm-name-label" id="confirmSelectionLabel">Producto seleccionado</label>
                     <div class="resource-radio-group" id="resourceRadioGroup">
                         <!-- Populated by JS -->
                     </div>
@@ -761,6 +1178,54 @@
                 <button class="confirm-close" id="confirmCancel">Cancelar</button>
             </div>
 
+            <!-- Paso FOTO: confirmación directa (solo staff) -->
+            <div id="confirmStepFoto" style="display:none;">
+                <div class="confirm-icon">📷</div>
+                <h2 class="confirm-title">Confirmar sesión</h2>
+                <div class="confirm-summary" id="confirmSummaryFoto"></div>
+                <div class="confirm-name-group">
+                    <label class="confirm-name-label" for="confirmFotoName">A nombre de</label>
+                    <input
+                        class="confirm-name-input"
+                        type="text"
+                        id="confirmFotoName"
+                        placeholder="Ej: María García"
+                        maxlength="100"
+                        autocomplete="name"
+                    />
+                    <div class="confirm-name-error" id="confirmFotoNameError"></div>
+                </div>
+                <div class="confirm-name-group">
+                    <label class="confirm-name-label" for="confirmFotoPhone">Teléfono opcional</label>
+                    <input
+                        type="tel"
+                        id="confirmFotoPhone"
+                        inputmode="numeric"
+                        pattern="09[0-9]{8}"
+                        placeholder="Ej: 0981234567"
+                        maxlength="10"
+                        autocomplete="tel"
+                        class="confirm-name-input"
+                    />
+                    <div class="confirm-name-error" id="confirmFotoPhoneError"></div>
+                </div>
+                <div class="confirm-actions">
+                    <button class="confirm-btn confirm-btn-whatsapp" id="confirmFotoSubmitBtn">
+                        Crear reserva
+                    </button>
+                </div>
+                <button class="confirm-close" id="confirmFotoCancel">Cancelar</button>
+            </div>
+
+            <!-- Paso FOTO: confirmación directa final -->
+            <div id="confirmStepFotoDone" style="display:none;">
+                <div class="confirm-icon">✅</div>
+                <h2 class="confirm-title">Reserva creada</h2>
+                <p class="confirm-subtitle">La sesión fotográfica quedó confirmada de forma directa.</p>
+                <div class="confirm-summary" id="confirmSummaryFotoDone"></div>
+                <button class="confirm-close" id="confirmFotoDoneClose">Cerrar</button>
+            </div>
+
             <!-- Paso 2: Código y opciones de contacto -->
             <div id="confirmStep2" style="display:none;">
                 <div class="confirm-icon">✅</div>
@@ -798,15 +1263,31 @@
         const API_ENDPOINT = '{% url "fractalia_disponibilidad_api" %}';
         const DIAS_API_ENDPOINT = '{% url "fractalia_dias_disponibilidad_api" %}';
         const PENDING_BOOKING_ENDPOINT = '{% url "fractalia_create_pending_booking" %}';
-        const RESOURCES = [
-            {% for r in resources %}
-            { id: {{ r.id }}, name: "{{ r.name }}", whatsapp: "{{ r.whatsapp_number }}" }{% if not forloop.last %},{% endif %}
+        const RESERVA_DIRECTA_ENDPOINT = '{% url "fractalia_reserva_directa" %}';
+        const IS_STAFF = {{ request.user.is_staff|yesno:"true,false" }};
+        const PUBLIC_MODE = !IS_STAFF;
+
+        const PRODUCTS = [
+            {% for p in products %}
+            {
+                id: {{ p.id }},
+                name: "{{ p.name }}",
+                description: "{{ p.description|escapejs }}",
+                product_type: "{{ p.product_type }}",
+                resource_id: {{ p.resource_id }},
+                whatsapp: "{{ p.resource.whatsapp_number }}",
+                packages: [
+                    {% for pkg in p.packages.all %}
+                    { id: {{ pkg.id }}, label: "{{ pkg.label }}", slots_to_block: {{ pkg.slots_to_block }} }{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                ]
+            }{% if not forloop.last %},{% endif %}
             {% endfor %}
         ];
 
-        let currentResourceId = RESOURCES.length > 0 ? RESOURCES[0].id : null;
-        let currentResourceName = RESOURCES.length > 0 ? RESOURCES[0].name : '';
-        let currentResourceWhatsapp = RESOURCES.length > 0 ? RESOURCES[0].whatsapp : '';
+        let currentProduct = IS_STAFF && PRODUCTS.length > 0 ? PRODUCTS[0] : null;
+        let selectedPackage = null;
+        let fractaboxStartSlot = null;
 
         let selectedDate = null;
         let selectedSlots = new Set();
@@ -828,6 +1309,202 @@
                 }
             }
             return cookieValue;
+        }
+
+        function setConfirmSelectionLabel(productType) {
+            const label = document.getElementById('confirmSelectionLabel');
+            if (!label) return;
+            if (productType === 'FRACTABOX') {
+                label.textContent = 'Paquete seleccionado';
+            } else if (productType === 'FOTO') {
+                label.textContent = 'Sesión seleccionada';
+            } else {
+                label.textContent = 'Producto seleccionado';
+            }
+        }
+
+        // Inicializar selector de productos
+        function initProductSelector() {
+            const container = document.getElementById('productSelector');
+            container.innerHTML = '';
+            PRODUCTS.forEach((product, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'product-btn' + (index === 0 ? ' active' : '');
+                btn.dataset.productId = product.id;
+                btn.textContent = product.name;
+                btn.addEventListener('click', () => selectProduct(product, btn));
+                container.appendChild(btn);
+            });
+        }
+
+        function renderPublicLanding() {
+            const container = document.getElementById('publicOptionGrid');
+            const landing = document.getElementById('publicLanding');
+            if (!container || !landing) return;
+
+            container.innerHTML = '';
+            const publicProducts = PRODUCTS.filter(product =>
+                product.product_type === 'FRACTABOX' || product.product_type === 'ALQUILER'
+            );
+
+            publicProducts.forEach((product) => {
+                const btn = document.createElement('button');
+                btn.className = 'public-option-btn';
+                btn.type = 'button';
+                btn.innerHTML = `
+                    <div>
+                        <div class="public-option-tag">${product.product_type === 'FRACTABOX' ? 'Fractabox' : 'Alquiler de estudio'}</div>
+                        <div class="public-option-name">${product.name}</div>
+                        <div class="public-option-desc">${product.description || 'Seleccioná esta opción para continuar con tu reserva.'}</div>
+                    </div>
+                    <div class="public-option-foot">Elegir esta opción</div>
+                `;
+                btn.addEventListener('click', () => startPublicProduct(product));
+                container.appendChild(btn);
+            });
+
+            landing.classList.add('visible');
+        }
+
+        function goBackToLanding() {
+            // Reset state
+            selectedSlots.clear();
+            fractaboxStartSlot = null;
+            selectedPackage = null;
+            selectedDate = null;
+            currentProduct = null;
+            updateSelectionCount();
+            hideValidationError();
+
+            // Hide everything, show landing
+            document.getElementById('publicPackageScreen').classList.remove('visible');
+            document.getElementById('publicPackageScreen').style.display = 'none';
+            document.getElementById('productSelector').style.display = 'none';
+            document.getElementById('packageSelector').style.display = 'none';
+            document.getElementById('mainContainer').style.display = 'none';
+            document.getElementById('actionBar').style.display = 'none';
+            document.getElementById('headerBackBtn').style.display = 'none';
+            document.getElementById('headerSubtitle').textContent = 'Calendario de disponibilidad';
+            document.getElementById('publicLanding').classList.add('visible');
+            document.body.classList.add('public-mode');
+        }
+
+        function showPublicPackageScreen(product) {
+            const screen = document.getElementById('publicPackageScreen');
+            const grid = document.getElementById('publicPackageGrid');
+            document.getElementById('publicPackageKicker').textContent = product.name;
+            grid.innerHTML = '';
+
+            product.packages.forEach(pkg => {
+                const btn = document.createElement('button');
+                btn.className = 'public-package-btn';
+                btn.type = 'button';
+                btn.innerHTML = `
+                    <span class="public-package-btn-label">${pkg.label}</span>
+                    <span class="public-package-btn-arrow">→</span>
+                `;
+                btn.addEventListener('click', () => {
+                    selectedPackage = pkg;
+                    screen.classList.remove('visible');
+                    screen.style.display = 'none';
+                    enterPublicCalendar(product);
+                });
+                grid.appendChild(btn);
+            });
+
+            document.getElementById('publicLanding').classList.remove('visible');
+            screen.style.display = 'flex';
+            screen.classList.add('visible');
+            document.getElementById('headerBackBtn').style.display = '';
+            document.getElementById('headerSubtitle').textContent = product.name;
+        }
+
+        function enterPublicCalendar(product) {
+            currentProduct = product;
+            document.body.classList.remove('public-mode');
+            document.getElementById('productSelector').style.display = 'none';
+            document.getElementById('packageSelector').style.display = 'none';
+            document.getElementById('mainContainer').style.display = '';
+            document.getElementById('actionBar').style.display = '';
+            document.getElementById('headerBackBtn').style.display = '';
+            document.getElementById('headerSubtitle').textContent = product.name;
+
+            // Reset calendar state
+            selectedSlots.clear();
+            fractaboxStartSlot = null;
+            updateSelectionCount();
+            hideValidationError();
+            document.getElementById('daysList').innerHTML = '';
+            daysLoaded = 0;
+            nextBatchDate = null;
+            loadDaysBatch(null, BATCH_SIZE);
+            document.getElementById('slotsList').innerHTML = '';
+        }
+
+        function startPublicProduct(product) {
+            if (product.product_type === 'FRACTABOX' && product.packages.length > 0) {
+                showPublicPackageScreen(product);
+            } else {
+                document.getElementById('publicLanding').classList.remove('visible');
+                document.getElementById('headerBackBtn').style.display = '';
+                enterPublicCalendar(product);
+            }
+        }
+
+        function initProductSelection(product, btn) {
+            selectedSlots.clear();
+            selectedPackage = null;
+            fractaboxStartSlot = null;
+            updateSelectionCount();
+            hideValidationError();
+
+            if (btn) {
+                document.querySelectorAll('.product-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            }
+
+            const packageSelector = document.getElementById('packageSelector');
+            if (product.product_type === 'FRACTABOX' && product.packages.length > 0) {
+                initPackageSelector(product);
+                packageSelector.style.display = 'flex';
+            } else {
+                packageSelector.style.display = 'none';
+            }
+
+            document.getElementById('daysList').innerHTML = '';
+            daysLoaded = 0;
+            nextBatchDate = null;
+            loadDaysBatch(null, BATCH_SIZE);
+
+            if (selectedDate) {
+                loadSlots(selectedDate);
+            } else {
+                document.getElementById('slotsList').innerHTML = '';
+            }
+        }
+
+        function selectProduct(product, btn) {
+            currentProduct = product;
+            initProductSelection(product, btn);
+        }
+
+        function initPackageSelector(product) {
+            const container = document.getElementById('packageOptions');
+            container.innerHTML = '';
+            selectedPackage = product.packages.length > 0 ? product.packages[0] : null;
+            product.packages.forEach((pkg, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'package-btn' + (index === 0 ? ' active' : '');
+                btn.textContent = pkg.label;
+                btn.addEventListener('click', () => {
+                    selectedPackage = pkg;
+                    updateSelectionCount();
+                    document.querySelectorAll('.package-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    if (selectedDate) loadSlots(selectedDate);
+                });
+                container.appendChild(btn);
+            });
         }
 
         // Validate if slots are contiguous and valid duration
@@ -867,10 +1544,12 @@
         // Load a batch of days
         function loadDaysBatch(fromDate, batchSize) {
             if (loadingBatch) return Promise.resolve();
+            const resourceId = currentProduct ? currentProduct.resource_id : null;
+            if (!resourceId) return Promise.resolve();
             loadingBatch = true;
 
             const fromDateStr = fromDate ? fromDate.toISOString().split('T')[0] : undefined;
-            let url = `${DIAS_API_ENDPOINT}?resource_id=${currentResourceId}&days=${batchSize}`;
+            let url = `${DIAS_API_ENDPOINT}?resource_id=${resourceId}&days=${batchSize}`;
             if (fromDateStr) url += `&from_date=${fromDateStr}`;
 
             return fetch(url)
@@ -935,20 +1614,38 @@
             selectedDate = dateStr;
             loadSlots(dateStr);
 
-            btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            // Scroll horizontal del día dentro del contenedor, sin mover el viewport vertical
+            const container = document.querySelector('.days-container');
+            const btnLeft = btn.offsetLeft;
+            const btnWidth = btn.offsetWidth;
+            const containerWidth = container.offsetWidth;
+            container.scrollTo({
+                left: btnLeft - (containerWidth / 2) + (btnWidth / 2),
+                behavior: 'smooth'
+            });
         }
 
         // Load slots for selected day
         function loadSlots(dateStr) {
-            if (!currentResourceId) {
-                showEmptyState('No hay recursos disponibles');
+            if (!currentProduct) {
+                showEmptyState('No hay productos disponibles');
+                return;
+            }
+
+            if (currentProduct.product_type === 'FRACTABOX' && !selectedPackage) {
+                showEmptyState('Elegí un paquete primero');
                 return;
             }
 
             const slotsList = document.getElementById('slotsList');
             slotsList.innerHTML = '<div class="loading">Cargando horarios...</div>';
 
-            fetch(`${API_ENDPOINT}?fecha=${dateStr}&resource_id=${currentResourceId}`)
+            let url = `${API_ENDPOINT}?fecha=${dateStr}&resource_id=${currentProduct.resource_id}`;
+            if (currentProduct.product_type === 'FRACTABOX' && selectedPackage) {
+                url += `&product_type=FRACTABOX&slots_needed=${selectedPackage.slots_to_block}`;
+            }
+
+            fetch(url)
                 .then(response => response.json())
                 .then(data => {
                     if (data.error) {
@@ -980,6 +1677,7 @@
             }
 
             slotsList.innerHTML = '';
+            const productType = currentProduct ? currentProduct.product_type : 'ALQUILER';
 
             data.slots.forEach(slot => {
                 const slotDiv = document.createElement('div');
@@ -1001,14 +1699,10 @@
                     </div>
                 `;
 
-                if (slot.available) {
+                if (productType === 'ALQUILER' && slot.available) {
                     const checkbox = slotDiv.querySelector('input[type="checkbox"]');
-
-                    // Make entire slot clickable
                     slotDiv.addEventListener('click', () => {
                         checkbox.checked = !checkbox.checked;
-
-                        // Update visual state
                         if (checkbox.checked) {
                             slotDiv.classList.add('selected');
                             selectedSlots.add(slot.time);
@@ -1018,27 +1712,100 @@
                         }
                         updateSelectionCount();
                     });
+
+                } else if (productType === 'FRACTABOX') {
+                    if (slot.available_as_start) {
+                        slotDiv.addEventListener('click', () => {
+                            fractaboxStartSlot = slot.time;
+                            highlightFractaboxBlock(data.slots);
+                            updateSelectionCount();
+                        });
+                    } else {
+                        slotDiv.classList.remove('available');
+                        slotDiv.classList.add('occupied');
+                        slotDiv.querySelector('input').disabled = true;
+                        slotDiv.querySelector('.time-slot-status').className = 'time-slot-status occupied';
+                        slotDiv.querySelector('.time-slot-status').textContent = 'Ocupado';
+                    }
+
+                } else if (productType === 'FOTO' && slot.available) {
+                    const checkbox = slotDiv.querySelector('input[type="checkbox"]');
+                    slotDiv.addEventListener('click', () => {
+                        checkbox.checked = !checkbox.checked;
+                        if (checkbox.checked) {
+                            slotDiv.classList.add('foto-selected');
+                            selectedSlots.add(slot.time);
+                        } else {
+                            slotDiv.classList.remove('foto-selected');
+                            selectedSlots.delete(slot.time);
+                        }
+                        updateSelectionCount();
+                    });
                 }
 
                 slotsList.appendChild(slotDiv);
+            });
+
+            if (productType === 'FRACTABOX' && fractaboxStartSlot) {
+                applySavedFractaboxSelection(data.slots);
+            }
+        }
+
+        function applySavedFractaboxSelection(slots) {
+            const savedSlot = slots.find(slot => slot.time === fractaboxStartSlot);
+            if (!savedSlot || !savedSlot.available_as_start) {
+                fractaboxStartSlot = null;
+                updateSelectionCount();
+                return;
+            }
+            highlightFractaboxBlock(slots);
+        }
+
+        function highlightFractaboxBlock(slots) {
+            const startHour = parseInt(fractaboxStartSlot.split(':')[0]);
+            const n = selectedPackage ? selectedPackage.slots_to_block : 1;
+            const blockedHours = new Set();
+            for (let i = 0; i < n; i++) {
+                blockedHours.add(`${(startHour + i).toString().padStart(2, '0')}:00`);
+            }
+            document.querySelectorAll('.time-slot').forEach(el => {
+                el.classList.remove('fractabox-start', 'fractabox-blocked');
+                const timeInput = el.querySelector('input[data-time]');
+                if (!timeInput) return;
+                const t = timeInput.dataset.time;
+                if (t === fractaboxStartSlot) el.classList.add('fractabox-start');
+                else if (blockedHours.has(t)) el.classList.add('fractabox-blocked');
             });
         }
 
         // Update selection count and button state
         function updateSelectionCount() {
-            const count = selectedSlots.size;
-            document.getElementById('selectionCount').textContent = `${count} horario${count !== 1 ? 's' : ''}`;
+            const productType = currentProduct ? currentProduct.product_type : 'ALQUILER';
+            let count = 0;
+            let isValid = false;
 
-            const isValid = isValidReservation(selectedSlots);
+            if (productType === 'ALQUILER') {
+                count = selectedSlots.size;
+                isValid = isValidReservation(selectedSlots);
+            } else if (productType === 'FRACTABOX') {
+                count = fractaboxStartSlot ? (selectedPackage ? selectedPackage.slots_to_block : 1) : 0;
+                isValid = fractaboxStartSlot !== null;
+            } else if (productType === 'FOTO') {
+                count = selectedSlots.size;
+                isValid = count >= 1 && isContiguous(selectedSlots);
+            }
+
+            document.getElementById('selectionCount').textContent = `${count} horario${count !== 1 ? 's' : ''}`;
             document.getElementById('reserveBtn').disabled = !isValid;
 
-            // Show appropriate error message
-            if (count > 0 && !isValid) {
+            if (productType === 'ALQUILER' && count > 0 && !isValid) {
                 if (![2, 4, 6, 8].includes(count)) {
                     showValidationError(`❌ Duración inválida (${count}h). Las reservas deben ser de 2, 4, 6 u 8 horas.`);
                 } else if (!isContiguous(selectedSlots)) {
                     showValidationError('❌ Horarios no contiguos. Los horarios deben ser consecutivos sin interrupciones.');
                 }
+            } else if (productType === 'FOTO' && count > 1 && !isContiguous(selectedSlots)) {
+                showValidationError('❌ Los horarios deben ser consecutivos.');
             } else {
                 hideValidationError();
             }
@@ -1061,31 +1828,72 @@
 
         // Step 1: Open modal with name field (no POST yet)
         function handleReservation() {
-            if (!isValidReservation(selectedSlots)) return;
+            const productType = currentProduct ? currentProduct.product_type : 'ALQUILER';
+            let startTime, endTime;
 
-            const slots = Array.from(selectedSlots).sort();
-            const startTime = slots[0];
-            const endHour = parseInt(slots[slots.length - 1].split(':')[0]) + 1;
-            const endTime = `${endHour.toString().padStart(2, '0')}:00`;
+            if (productType === 'ALQUILER') {
+                if (!isValidReservation(selectedSlots)) return;
+                const slots = Array.from(selectedSlots).sort();
+                startTime = slots[0];
+                const endHour = parseInt(slots[slots.length - 1].split(':')[0]) + 1;
+                endTime = `${endHour.toString().padStart(2, '0')}:00`;
+            } else if (productType === 'FRACTABOX') {
+                if (!fractaboxStartSlot || !selectedPackage) return;
+                startTime = fractaboxStartSlot;
+                const endHour = parseInt(fractaboxStartSlot.split(':')[0]) + selectedPackage.slots_to_block;
+                endTime = `${endHour.toString().padStart(2, '0')}:00`;
+            } else if (productType === 'FOTO') {
+                if (selectedSlots.size === 0) return;
+                const slots = Array.from(selectedSlots).sort();
+                startTime = slots[0];
+                const endHour = parseInt(slots[slots.length - 1].split(':')[0]) + 1;
+                endTime = `${endHour.toString().padStart(2, '0')}:00`;
+            }
 
-            // Save data for when user submits the name
             _pendingSlots = { startTime, endTime };
 
-            // Initialize resource radio buttons
-            initResourceRadios();
-
-            // Build summary text
-            const resourceName = RESOURCES.length > 0 ? RESOURCES[0].name : 'Fractalia';
             const date = new Date(selectedDate + 'T00:00:00');
             const dayName = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][date.getDay()];
             const dayNum = date.getDate();
             const month = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
                            'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'][date.getMonth()];
 
-            document.getElementById('confirmSummary').innerHTML =
-                `${dayName} ${dayNum} de ${month} · ${startTime} a ${endTime}`;
+            let summaryHtml = '';
+            if (productType === 'FRACTABOX') {
+                const packageLabel = selectedPackage ? selectedPackage.label : '';
+                summaryHtml = `
+                    <strong>Fractabox</strong><br>
+                    Paquete: ${packageLabel}<br>
+                    Fecha: ${dayName} ${dayNum} de ${month}<br>
+                    Inicio: ${startTime}
+                `;
+            } else {
+                summaryHtml = `${currentProduct.name} · ${dayName} ${dayNum} de ${month} · ${startTime} a ${endTime}`;
+            }
+            document.getElementById('confirmSummary').innerHTML = summaryHtml;
 
-            // Reset name and phone inputs
+            // FOTO: modal simplificado sin nombre/teléfono
+            if (productType === 'FOTO') {
+                document.getElementById('confirmSummaryFoto').innerHTML = `${currentProduct.name} · ${dayName} ${dayNum} de ${month} · ${startTime} a ${endTime}`;
+                document.getElementById('confirmStep1').style.display = 'none';
+                document.getElementById('confirmStepFoto').style.display = 'block';
+                document.getElementById('confirmStep2').style.display = 'none';
+                document.getElementById('confirmOverlay').classList.add('visible');
+                document.body.style.overflow = 'hidden';
+                return;
+            }
+
+            // ALQUILER / FRACTABOX: mostrar una etiqueta clara del producto o paquete seleccionado
+            if (productType === 'FRACTABOX') {
+                const packageLabel = selectedPackage ? selectedPackage.label : '';
+                document.getElementById('resourceRadioGroup').innerHTML =
+                    `<div class="confirm-selection-chip"><strong>${packageLabel}</strong><span>Fractabox</span></div>`;
+            } else {
+                document.getElementById('resourceRadioGroup').innerHTML =
+                    `<div class="confirm-selection-chip"><strong>${currentProduct.name}</strong><span>Producto seleccionado</span></div>`;
+            }
+            setConfirmSelectionLabel(productType);
+
             document.getElementById('confirmName').value = '';
             document.getElementById('confirmPhone').value = '';
             document.getElementById('confirmNameError').textContent = '';
@@ -1093,17 +1901,18 @@
             document.getElementById('confirmName').classList.remove('input-error');
             document.getElementById('confirmPhone').classList.remove('input-error');
 
-            // Show step 1, hide step 2
             document.getElementById('confirmStep1').style.display = 'block';
+            document.getElementById('confirmStepFoto').style.display = 'none';
             document.getElementById('confirmStep2').style.display = 'none';
             document.getElementById('confirmOverlay').classList.add('visible');
+            document.body.style.overflow = 'hidden';
 
-            // Focus name input
             setTimeout(() => document.getElementById('confirmName').focus(), 150);
         }
 
         // Step 2: Submit name and phone → POST → show code
         async function submitPendingBooking() {
+            const productType = currentProduct ? currentProduct.product_type : 'ALQUILER';
             const name = document.getElementById('confirmName').value.trim();
             const phone = document.getElementById('confirmPhone').value.trim();
             const nameInput = document.getElementById('confirmName');
@@ -1134,14 +1943,7 @@
             phoneError.textContent = '';
             phoneInput.classList.remove('input-error');
 
-            // Validate resource selection
-            const resource = getSelectedResource();
-            const resourceError = document.getElementById('confirmResourceError');
-            if (!resource) {
-                resourceError.textContent = 'Por favor seleccioná un recurso.';
-                return;
-            }
-            resourceError.textContent = '';
+            document.getElementById('confirmResourceError').textContent = '';
 
             const submitBtn = document.getElementById('confirmSubmitBtn');
             submitBtn.disabled = true;
@@ -1157,7 +1959,7 @@
                         'X-CSRFToken': getCookie('csrftoken'),
                     },
                     body: JSON.stringify({
-                        resource_id: resource.id,
+                        product_id: currentProduct.id,
                         fecha: selectedDate,
                         start_time: startTime,
                         end_time: endTime,
@@ -1175,16 +1977,19 @@
                 const code = data.code;
 
                 // Build WhatsApp message with name
-                const resourceName = resource.name;
+                const productName = currentProduct.name;
+                const whatsappNumber = currentProduct.whatsapp || '';
                 const date = new Date(selectedDate + 'T00:00:00');
                 const dayName = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][date.getDay()];
                 const dayNum = date.getDate();
                 const month = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
                                'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'][date.getMonth()];
-                const message = `Hola! Soy ${name}. Quiero reservar ${resourceName} el ${dayName} ${dayNum} de ${month} de ${startTime} a ${endTime}. Mi código de reserva es: ${code}`;
+                const packageLabel = selectedPackage ? selectedPackage.label : '';
+                const message = productType === 'FRACTABOX'
+                    ? `Hola! Soy ${name}. Quiero reservar Fractabox (${packageLabel}) el ${dayName} ${dayNum} de ${month} a las ${startTime}. Mi código de reserva es: ${code}`
+                    : `Hola! Soy ${name}. Quiero reservar ${productName} el ${dayName} ${dayNum} de ${month} de ${startTime} a ${endTime}. Mi código de reserva es: ${code}`;
 
                 // Set step 2 content
-                const whatsappNumber = resource.whatsapp || '';
                 document.getElementById('confirmCode').textContent = code;
                 if (whatsappNumber) {
                     document.getElementById('confirmWhatsappBtn').href =
@@ -1205,9 +2010,79 @@
             }
         }
 
+        async function submitDirectBooking() {
+            const clientName = document.getElementById('confirmFotoName').value.trim();
+            const clientNameInput = document.getElementById('confirmFotoName');
+            const clientNameError = document.getElementById('confirmFotoNameError');
+            const clientPhone = document.getElementById('confirmFotoPhone').value.trim();
+            const clientPhoneInput = document.getElementById('confirmFotoPhone');
+            const clientPhoneError = document.getElementById('confirmFotoPhoneError');
+            const { startTime, endTime } = _pendingSlots;
+            const submitBtn = document.getElementById('confirmFotoSubmitBtn');
+
+            if (!clientName) {
+                clientNameError.textContent = 'Por favor ingresá el nombre de la persona.';
+                clientNameInput.classList.add('input-error');
+                clientNameInput.focus();
+                return;
+            }
+
+            clientNameError.textContent = '';
+            clientNameInput.classList.remove('input-error');
+
+            if (clientPhone && !/^09\d{8}$/.test(clientPhone)) {
+                clientPhoneError.textContent = 'Ingresá un número válido (09XXXXXXXX) o dejalo vacío.';
+                clientPhoneInput.classList.add('input-error');
+                clientPhoneInput.focus();
+                return;
+            }
+
+            clientPhoneError.textContent = '';
+            clientPhoneInput.classList.remove('input-error');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Creando reserva...';
+
+            try {
+                const response = await fetch(RESERVA_DIRECTA_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken'),
+                    },
+                    body: JSON.stringify({
+                        product_id: currentProduct.id,
+                        fecha: selectedDate,
+                        start_time: startTime,
+                        end_time: endTime,
+                        client_name: clientName,
+                        client_phone: clientPhone,
+                    }),
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Error al crear la reserva');
+                }
+
+                // Mostrar paso 2 simplificado (sin código ni WhatsApp)
+                document.getElementById('confirmStepFoto').style.display = 'none';
+                document.getElementById('confirmStepFotoDone').style.display = 'block';
+                document.getElementById('confirmSummaryFotoDone').innerHTML =
+                    `${currentProduct.name} · ${selectedDate} · ${startTime} a ${endTime}<br><strong>A nombre de:</strong> ${clientName}`;
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert(`Error: ${error.message}`);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Crear reserva';
+            }
+        }
+
         // Close modal and clean up panel
         function closeConfirmModal() {
             document.getElementById('confirmOverlay').classList.remove('visible');
+            document.body.style.overflow = '';
             _pendingSlots = null;
 
             // Reset reserve button
@@ -1218,15 +2093,33 @@
             // Clean up form inputs
             document.getElementById('confirmName').value = '';
             document.getElementById('confirmPhone').value = '';
+            document.getElementById('confirmFotoName').value = '';
+            document.getElementById('confirmFotoPhone').value = '';
             document.getElementById('confirmNameError').textContent = '';
             document.getElementById('confirmPhoneError').textContent = '';
+            document.getElementById('confirmFotoNameError').textContent = '';
+            document.getElementById('confirmFotoPhoneError').textContent = '';
             document.getElementById('confirmName').classList.remove('input-error');
             document.getElementById('confirmPhone').classList.remove('input-error');
+            document.getElementById('confirmFotoName').classList.remove('input-error');
+            document.getElementById('confirmFotoPhone').classList.remove('input-error');
+            document.getElementById('confirmStepFotoDone').style.display = 'none';
+            document.getElementById('confirmSummaryFotoDone').innerHTML = '';
+
+            // Reset FRACTABOX / FOTO state
+            fractaboxStartSlot = null;
+            document.querySelectorAll('.time-slot').forEach(el => {
+                el.classList.remove('fractabox-start', 'fractabox-blocked', 'foto-selected', 'selected');
+            });
+            document.querySelectorAll('.time-slot input[type="checkbox"]').forEach(cb => cb.checked = false);
+
+            // Restaurar botones FOTO para próxima apertura
+            document.getElementById('confirmWhatsappBtn').style.display = '';
+            document.getElementById('confirmCallBtn').style.display = '';
+            document.getElementById('confirmStepFoto').style.display = 'none';
 
             // Clean up slot selection
             selectedSlots.clear();
-            document.querySelectorAll('.time-slot.selected').forEach(el => el.classList.remove('selected'));
-            document.querySelectorAll('.time-slot input[type="checkbox"]').forEach(cb => cb.checked = false);
             updateSelectionCount();
             hideValidationError();
         }
@@ -1240,7 +2133,7 @@
                            'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'][date.getMonth()];
 
             document.getElementById('selectedDayName').textContent = `${dayName} ${dayNum} de ${month}`;
-            document.getElementById('selectedDayText').textContent = 'Selecciona los horarios que desees';
+            document.getElementById('selectedDayText').textContent = '';
         }
 
         // Show empty state
@@ -1280,6 +2173,11 @@
 
         // Step 2: Close button
         document.getElementById('confirmClose').addEventListener('click', closeConfirmModal);
+
+        // FOTO: submit, cancel y cierre de confirmación final
+        document.getElementById('confirmFotoSubmitBtn').addEventListener('click', submitDirectBooking);
+        document.getElementById('confirmFotoCancel').addEventListener('click', closeConfirmModal);
+        document.getElementById('confirmFotoDoneClose').addEventListener('click', closeConfirmModal);
 
         // Close modal when clicking the dark overlay
         document.getElementById('confirmOverlay').addEventListener('click', (e) => {
@@ -1329,8 +2227,17 @@
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
-            if (currentResourceId) {
-                loadDaysBatch(null, BATCH_SIZE);
+            if (PUBLIC_MODE) {
+                document.body.classList.add('public-mode');
+                // Ocultar calendario y action bar hasta que el usuario elija
+                document.getElementById('mainContainer').style.display = 'none';
+                document.getElementById('actionBar').style.display = 'none';
+                renderPublicLanding();
+            } else {
+                initProductSelector();
+                if (currentProduct) {
+                    initProductSelection(currentProduct, document.querySelector('.product-btn.active'));
+                }
             }
         });
     </script>

@@ -4,7 +4,10 @@ from django.utils.safestring import mark_safe
 from datetime import datetime, date as date_cls
 import re
 import zoneinfo
-from .models import Resource, WeeklyAvailability, Booking, PendingBooking
+from .models import (
+    Resource, WeeklyAvailability, Booking, PendingBooking, Product, FractaboxPackage,
+    get_fractabox_package_for_hours,
+)
 
 _ASUNCION = zoneinfo.ZoneInfo('America/Asuncion')
 
@@ -98,6 +101,20 @@ class WeeklyAvailabilityInline(admin.TabularInline):
     extra = 1
 
 
+class FractaboxPackageInline(admin.TabularInline):
+    model = FractaboxPackage
+    extra = 1
+    fields = ('label', 'slots_to_block', 'order', 'is_active')
+
+
+@admin.register(Product)
+class ProductAdmin(admin.ModelAdmin):
+    list_display = ('name', 'product_type', 'resource', 'is_public', 'is_active')
+    list_editable = ('is_public', 'is_active')
+    list_filter = ('product_type', 'is_active', 'is_public')
+    inlines = [FractaboxPackageInline]
+
+
 @admin.register(Resource)
 class ResourceAdmin(admin.ModelAdmin):
     list_display = ('name', 'whatsapp_number', 'active')
@@ -114,16 +131,16 @@ class WeeklyAvailabilityAdmin(admin.ModelAdmin):
 
 @admin.register(Booking)
 class BookingAdmin(admin.ModelAdmin):
-    list_display = ('resource', 'formatted_date', 'end_datetime', 'client_phone', 'status_display', 'whatsapp_contact')
+    list_display = ('resource', 'formatted_date', 'reservation_code', 'client_name', 'end_datetime', 'client_phone', 'product', 'status_display', 'whatsapp_contact')
     list_filter = ('resource', 'status', 'start_datetime')
-    search_fields = ('resource__name', 'notes', 'client_phone')
+    search_fields = ('resource__name', 'notes', 'client_phone', 'client_name', 'product__name')
     readonly_fields = ('created_at', 'whatsapp_link_display')
     date_hierarchy = 'start_datetime'
     ordering = ('start_datetime',)
     actions = ['cancelar', 'reactivar']
     fieldsets = (
         ('Información de la reserva', {
-            'fields': ('resource', 'status', 'client_phone')
+            'fields': ('resource', 'product', 'reservation_code', 'status', 'client_name', 'client_phone')
         }),
         ('Horario', {
             'fields': ('start_datetime', 'end_datetime')
@@ -173,6 +190,7 @@ class BookingAdmin(admin.ModelAdmin):
         date = obj.start_datetime.date()
         start_time = obj.start_datetime.strftime('%H:%M')
         end_time = obj.end_datetime.strftime('%H:%M')
+        duration_hours = int((obj.end_datetime - obj.start_datetime).total_seconds() / 3600)
 
         days = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
         months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -183,15 +201,24 @@ class BookingAdmin(admin.ModelAdmin):
         date_str = f'{day_name.capitalize()}, {date.day} de {month_name} de {date.year}'
 
         resource_name = obj.resource.name
-        code = ''
+        code = getattr(obj, 'reservation_code', '') or ''
+        product_name = resource_name
+        if obj.product and obj.product.product_type == 'FRACTABOX':
+            package = get_fractabox_package_for_hours(obj.product, duration_hours)
+            if package:
+                product_name = f'Fractabox ({package.label})'
 
-        # Extract code from notes if available
-        if obj.notes:
+        if not code and obj.notes:
             match = re.search(r'Código de reserva: (\w+)', obj.notes)
             if match:
-                code = f' (Código: {match.group(1)})'
+                code = match.group(1)
 
-        message = f'Hola, te escribo en relacion a tu reserva en {resource_name} el {date_str} de {start_time} a {end_time}{code}.'
+        code_suffix = f' (Código: {code})' if code else ''
+
+        if obj.product and obj.product.product_type == 'FRACTABOX':
+            message = f'Hola, te escribo en relacion a tu reserva de {product_name} el {date_str} a las {start_time}{code_suffix}.'
+        else:
+            message = f'Hola, te escribo en relacion a tu reserva en {resource_name} el {date_str} de {start_time} a {end_time}{code_suffix}.'
 
         return f"https://wa.me/{obj.resource.whatsapp_number}?text={message}"
 
@@ -248,16 +275,18 @@ class BookingAdmin(admin.ModelAdmin):
                 cancelled_count += 1
 
                 # Buscar y marcar la PendingBooking padre como CANCELLED
-                if booking.notes:
+                code = booking.reservation_code
+                if not code and booking.notes:
                     match = re.search(r'Código de reserva: (\w+)', booking.notes)
                     if match:
                         code = match.group(1)
-                        try:
-                            pending = PendingBooking.objects.get(reservation_code=code)
-                            pending.status = 'CANCELLED'
-                            pending.save()
-                        except PendingBooking.DoesNotExist:
-                            pass
+                if code:
+                    try:
+                        pending = PendingBooking.objects.get(reservation_code=code)
+                        pending.status = 'CANCELLED'
+                        pending.save()
+                    except PendingBooking.DoesNotExist:
+                        pass
             else:
                 incompatible_count += 1
 
@@ -283,16 +312,18 @@ class BookingAdmin(admin.ModelAdmin):
                 reactivated_count += 1
 
                 # Buscar y marcar la PendingBooking padre como CONFIRMED
-                if booking.notes:
+                code = booking.reservation_code
+                if not code and booking.notes:
                     match = re.search(r'Código de reserva: (\w+)', booking.notes)
                     if match:
                         code = match.group(1)
-                        try:
-                            pending = PendingBooking.objects.get(reservation_code=code)
-                            pending.status = 'CONFIRMED'
-                            pending.save()
-                        except PendingBooking.DoesNotExist:
-                            pass
+                if code:
+                    try:
+                        pending = PendingBooking.objects.get(reservation_code=code)
+                        pending.status = 'CONFIRMED'
+                        pending.save()
+                    except PendingBooking.DoesNotExist:
+                        pass
             else:
                 incompatible_count += 1
 
@@ -315,9 +346,9 @@ class BookingAdmin(admin.ModelAdmin):
 class PendingBookingAdmin(admin.ModelAdmin):
     list_display = (
         'estado_gestion', 'formatted_date', 'horario',
-        'client_name', 'resource', 'recibida_hace', 'whatsapp_link_list',
+        'client_name', 'product', 'resource', 'recibida_hace', 'whatsapp_link_list',
     )
-    list_filter = (EstadoGestionFilter, 'resource')
+    list_filter = (EstadoGestionFilter, 'resource', 'product')
     search_fields = ('reservation_code', 'client_name', 'client_phone')
     readonly_fields = ('reservation_code', 'created_at', 'whatsapp_link_display')
     ordering = ('date', 'start_time')
@@ -328,7 +359,7 @@ class PendingBookingAdmin(admin.ModelAdmin):
             'fields': ('client_name', 'client_phone', 'whatsapp_link_display')
         }),
         ('Detalles de la pre-reserva', {
-            'fields': ('reservation_code', 'resource', 'date', 'start_time', 'end_time', 'status')
+            'fields': ('reservation_code', 'resource', 'product', 'date', 'start_time', 'end_time', 'status')
         }),
         ('Notas', {
             'fields': ('notes',)
@@ -429,6 +460,9 @@ class PendingBookingAdmin(admin.ModelAdmin):
         date = obj.date
         start_time = obj.start_time.strftime('%H:%M')
         end_time = obj.end_time.strftime('%H:%M')
+        duration_hours = int(
+            (datetime.combine(date, obj.end_time) - datetime.combine(date, obj.start_time)).total_seconds() / 3600
+        )
 
         days = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
         months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -439,12 +473,27 @@ class PendingBookingAdmin(admin.ModelAdmin):
         date_str = f'{day_name.capitalize()}, {date.day} de {month_name} de {date.year}'
 
         resource_name = obj.resource.name
-        code = obj.reservation_code
+        code = getattr(obj, 'reservation_code', '') or ''
+        product_name = resource_name
+        if obj.product and obj.product.product_type == 'FRACTABOX':
+            package = get_fractabox_package_for_hours(obj.product, duration_hours)
+            if package:
+                product_name = f'Fractabox ({package.label})'
+        if not code and obj.notes:
+            match = re.search(r'Código de reserva: (\w+)', obj.notes)
+            if match:
+                code = match.group(1)
 
-        message = (
-            f'Hola, te escribo en relacion a tu pre-reserva en {resource_name} '
-            f'el {date_str} de {start_time} a {end_time} (Código: {code}).'
-        )
+        if obj.product and obj.product.product_type == 'FRACTABOX':
+            message = (
+                f'Hola, te escribo en relacion a tu pre-reserva de {product_name} '
+                f'el {date_str} a las {start_time} (Código: {code}).'
+            )
+        else:
+            message = (
+                f'Hola, te escribo en relacion a tu pre-reserva en {resource_name} '
+                f'el {date_str} de {start_time} a {end_time} (Código: {code}).'
+            )
 
         return f"https://wa.me/{obj.resource.whatsapp_number}?text={message}"
 
@@ -500,9 +549,19 @@ class PendingBookingAdmin(admin.ModelAdmin):
                 try:
                     start_dt = _asuncion(datetime.combine(pending.date, pending.start_time))
                     end_dt   = _asuncion(datetime.combine(pending.date, pending.end_time))
+                    duration_hours = int((end_dt - start_dt).total_seconds() / 3600)
+                    fractabox_package = None
+                    if pending.product and pending.product.product_type == 'FRACTABOX':
+                        fractabox_package = get_fractabox_package_for_hours(pending.product, duration_hours)
+                        if not fractabox_package:
+                            raise ValueError('Duración inválida para Fractabox')
 
                     Booking.objects.create(
                         resource=pending.resource,
+                        product=pending.product,
+                        fractabox_package=fractabox_package,
+                        reservation_code=pending.reservation_code,
+                        client_name=pending.client_name,
                         start_datetime=start_dt,
                         end_datetime=end_dt,
                         status='CONFIRMED',
