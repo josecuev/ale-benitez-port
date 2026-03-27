@@ -14,15 +14,38 @@ from .models import (
 
 def calendario(request):
     if request.user.is_staff:
-        products = Product.objects.filter(is_active=True)
+        products_qs = Product.objects.filter(is_active=True)
     else:
-        products = Product.objects.filter(is_active=True, is_public=True)
+        products_qs = Product.objects.filter(is_active=True, is_public=True)
 
-    products = products.prefetch_related(
+    products_qs = products_qs.prefetch_related(
         Prefetch('packages', queryset=FractaboxPackage.objects.filter(is_active=True).order_by('order'))
     ).select_related('resource')
 
-    context = {'products': products}
+    products_list = list(products_qs)
+    products_json = json.dumps([{
+        'id': p.id,
+        'name': p.name,
+        'description': p.description,
+        'product_type': p.product_type,
+        'resource_id': p.resource_id,
+        'whatsapp_number': p.resource.whatsapp_number,
+        'packages': [
+            {
+                'id': pkg.id,
+                'label': pkg.label,
+                'slots_to_block': pkg.slots_to_block,
+                'order': pkg.order,
+            }
+            for pkg in p.packages.all()
+        ],
+    } for p in products_list])
+
+    context = {
+        'products': products_list,
+        'products_json': products_json,
+        'is_staff': request.user.is_staff,
+    }
     return render(request, 'app_fractalia/calendario.html', context)
 
 
