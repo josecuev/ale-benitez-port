@@ -26,9 +26,6 @@
             padding: 20px;
             text-align: center;
             border-bottom: 3px solid #000;
-            position: sticky;
-            top: 0;
-            z-index: 100;
         }
 
         .header h1 {
@@ -244,7 +241,7 @@
         /* Days scroll bar */
         .days-container {
             background-color: #fff;
-            border-bottom: 2px solid #ffe927;
+            border-bottom: 3px solid #000;
             padding: 12px 0;
             overflow-x: auto;
             overflow-y: hidden;
@@ -524,9 +521,6 @@
             justify-content: space-between;
             gap: 12px;
             flex-wrap: wrap;
-            position: sticky;
-            bottom: 0;
-            z-index: 90;
         }
 
         .selection-info {
@@ -576,9 +570,12 @@
             inset: 0;
             background-color: rgba(0, 0, 0, 0.6);
             z-index: 1000;
+            /* Desktop: centrado */
             align-items: center;
             justify-content: center;
             padding: 20px;
+            overflow-y: auto;
+            overscroll-behavior: contain;
         }
 
         .confirm-overlay.visible {
@@ -594,6 +591,8 @@
             text-align: center;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             animation: modalIn 0.3s ease-out;
+            /* Evita que el modal quede cortado en viewport pequeño */
+            margin: auto;
         }
 
         @keyframes modalIn {
@@ -604,6 +603,35 @@
             to {
                 opacity: 1;
                 transform: scale(1) translateY(0);
+            }
+        }
+
+        /* Bottom sheet en mobile */
+        @media (max-width: 600px) {
+            .confirm-overlay {
+                align-items: flex-end;
+                justify-content: stretch;
+                padding: 0;
+            }
+
+            .confirm-modal {
+                border-radius: 18px 18px 0 0;
+                padding: 24px 20px 32px;
+                max-width: 100%;
+                max-height: 92vh;
+                overflow-y: auto;
+                overscroll-behavior: contain;
+                animation: sheetUp 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+                margin: 0;
+            }
+
+            @keyframes sheetUp {
+                from {
+                    transform: translateY(100%);
+                }
+                to {
+                    transform: translateY(0);
+                }
             }
         }
 
@@ -789,7 +817,7 @@
         /* Product selector */
         .product-selector {
             background-color: #fff;
-            border-bottom: 2px solid #000;
+            border-bottom: 1px solid #e8e8e8;
             padding: 10px 14px;
             display: flex;
             gap: 8px;
@@ -1351,6 +1379,8 @@
             // Hide everything, show landing
             document.getElementById('publicPackageScreen').classList.remove('visible');
             document.getElementById('publicPackageScreen').style.display = 'none';
+            document.getElementById('productSelector').style.display = 'none';
+            document.getElementById('packageSelector').style.display = 'none';
             document.getElementById('mainContainer').style.display = 'none';
             document.getElementById('actionBar').style.display = 'none';
             document.getElementById('headerBackBtn').style.display = 'none';
@@ -1392,6 +1422,8 @@
         function enterPublicCalendar(product) {
             currentProduct = product;
             document.body.classList.remove('public-mode');
+            document.getElementById('productSelector').style.display = 'none';
+            document.getElementById('packageSelector').style.display = 'none';
             document.getElementById('mainContainer').style.display = '';
             document.getElementById('actionBar').style.display = '';
             document.getElementById('headerBackBtn').style.display = '';
@@ -1582,7 +1614,15 @@
             selectedDate = dateStr;
             loadSlots(dateStr);
 
-            btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            // Scroll horizontal del día dentro del contenedor, sin mover el viewport vertical
+            const container = document.querySelector('.days-container');
+            const btnLeft = btn.offsetLeft;
+            const btnWidth = btn.offsetWidth;
+            const containerWidth = container.offsetWidth;
+            container.scrollTo({
+                left: btnLeft - (containerWidth / 2) + (btnWidth / 2),
+                behavior: 'smooth'
+            });
         }
 
         // Load slots for selected day
@@ -1839,6 +1879,7 @@
                 document.getElementById('confirmStepFoto').style.display = 'block';
                 document.getElementById('confirmStep2').style.display = 'none';
                 document.getElementById('confirmOverlay').classList.add('visible');
+                document.body.style.overflow = 'hidden';
                 return;
             }
 
@@ -1864,6 +1905,7 @@
             document.getElementById('confirmStepFoto').style.display = 'none';
             document.getElementById('confirmStep2').style.display = 'none';
             document.getElementById('confirmOverlay').classList.add('visible');
+            document.body.style.overflow = 'hidden';
 
             setTimeout(() => document.getElementById('confirmName').focus(), 150);
         }
@@ -2040,6 +2082,7 @@
         // Close modal and clean up panel
         function closeConfirmModal() {
             document.getElementById('confirmOverlay').classList.remove('visible');
+            document.body.style.overflow = '';
             _pendingSlots = null;
 
             // Reset reserve button
@@ -2090,7 +2133,7 @@
                            'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'][date.getMonth()];
 
             document.getElementById('selectedDayName').textContent = `${dayName} ${dayNum} de ${month}`;
-            document.getElementById('selectedDayText').textContent = 'Selecciona los horarios que desees';
+            document.getElementById('selectedDayText').textContent = '';
         }
 
         // Show empty state
