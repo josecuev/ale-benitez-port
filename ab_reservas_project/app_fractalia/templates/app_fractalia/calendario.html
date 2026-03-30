@@ -28,6 +28,18 @@
             border-bottom: 3px solid #000;
         }
 
+        .product-btn.admin-panel-btn {
+            text-decoration: none;
+            background: #000 !important;
+            color: #ffe927 !important;
+            border-color: #000 !important;
+        }
+
+        .product-btn.admin-panel-btn:hover {
+            background: #333 !important;
+            border-color: #333 !important;
+        }
+
         .header h1 {
             font-family: 'Bebas Neue', 'Arial Black', sans-serif;
             font-size: 32px;
@@ -1077,7 +1089,7 @@
         {% if not request.user.is_staff %}
         <button class="header-back-btn" id="headerBackBtn" style="display:none;" onclick="goBackToLanding()">← Cambiar</button>
         {% endif %}
-        <h1>FRACTALIA</h1>
+        <h1 id="headerTitle">FRACTALIA</h1>
         <p id="headerSubtitle">Calendario de disponibilidad</p>
     </div>
 
@@ -1382,6 +1394,13 @@
                 btn.addEventListener('click', () => selectProduct(product, btn));
                 container.appendChild(btn);
             });
+            {% if request.user.is_staff %}
+            const adminBtn = document.createElement('a');
+            adminBtn.href = '/admin/app_fractalia/pendingbooking/?gestion=activas';
+            adminBtn.className = 'product-btn admin-panel-btn';
+            adminBtn.textContent = '📋 Ver pendientes';
+            container.appendChild(adminBtn);
+            {% endif %}
         }
 
         function renderPublicLanding() {
@@ -2463,6 +2482,24 @@
         document.getElementById('confirmOverlay').addEventListener('click', (e) => {
             if (e.target.id === 'confirmOverlay') closeConfirmModal();
         });
+
+        // Longpress en el título FRACTALIA → ir al login del admin (solo si no está logueado)
+        {% if not request.user.is_authenticated %}
+        (function() {
+            const title = document.getElementById('headerTitle');
+            let pressTimer = null;
+            title.addEventListener('mousedown', () => {
+                pressTimer = setTimeout(() => { window.location.href = '/admin/login/'; }, 1500);
+            });
+            title.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                pressTimer = setTimeout(() => { window.location.href = '/admin/login/'; }, 1500);
+            }, { passive: false });
+            ['mouseup', 'mouseleave', 'touchend', 'touchcancel'].forEach(evt => {
+                title.addEventListener(evt, () => { clearTimeout(pressTimer); });
+            });
+        })();
+        {% endif %}
 
         // Step 2: Close modal after contacting
         document.getElementById('confirmWhatsappBtn').addEventListener('click', () => {
