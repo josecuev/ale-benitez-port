@@ -25,6 +25,54 @@ services:
       db:
         condition: service_healthy
 
+  # Servicio MCP — asiste la confirmación de pre-reservas.
+  # Misma imagen que Django; usa la ORM directamente, sin migraciones propias.
+  # entrypoint.sh siempre levanta uvicorn, por eso se sobreescribe.
+  #
+  # NO publica puertos al host: solo es alcanzable por Traefik dentro de la red
+  # traefik_public. Requiere MCP_JWT_PUBLIC_KEY en .env.prod o no arranca.
+  mcp:
+    build:
+      context: ./ab_reservas_project
+      dockerfile: Dockerfile
+    container_name: ab-mcp
+    restart: unless-stopped
+    networks:
+      - traefik_public
+    env_file:
+      - ./ab_reservas_project/.env.prod
+    environment:
+      MCP_TRANSPORT: http
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: "8001"
+      # Dónde vive este resource server y quién emite sus tokens.
+      # OAUTH_ISSUER apunta al Django que corre django-oauth-toolkit.
+      MCP_PUBLIC_URL: https://mcp.alejandrobenitez.com
+      OAUTH_ISSUER: https://admin.alejandrobenitez.com
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: ["python", "-m", "mcp_server"]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik_public"
+      - "traefik.http.services.mcp.loadbalancer.server.port=8001"
+
+      - "traefik.http.routers.mcp.rule=Host(`mcp.alejandrobenitez.com`)"
+      - "traefik.http.routers.mcp.entrypoints=websecure"
+      - "traefik.http.routers.mcp.tls=true"
+      - "traefik.http.routers.mcp.tls.certresolver=le"
+      - "traefik.http.routers.mcp.service=mcp"
+      - "traefik.http.routers.mcp.middlewares=mcp-headers"
+
+      # Cabeceras de seguridad. La autenticación real es el JWT que valida
+      # FastMCP; esto solo endurece el borde.
+      - "traefik.http.middlewares.mcp-headers.headers.stsSeconds=31536000"
+      - "traefik.http.middlewares.mcp-headers.headers.stsIncludeSubdomains=true"
+      - "traefik.http.middlewares.mcp-headers.headers.frameDeny=true"
+      - "traefik.http.middlewares.mcp-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.mcp-headers.headers.referrerPolicy=no-referrer"
+
   nginx:
     image: nginx:alpine
     container_name: ab-nginx

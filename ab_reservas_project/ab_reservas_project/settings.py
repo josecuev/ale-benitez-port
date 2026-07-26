@@ -49,6 +49,9 @@ INSTALLED_APPS = [
 
     # APPS DE ESTE REPO
 
+    # OAuth 2.1 — Django es el authorization server del MCP
+    'oauth2_provider',
+
     'app_links',
     'app_fractalia',
     'app_portfolio',
@@ -177,6 +180,70 @@ STORAGES = {
 # Media
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+
+# ─── OAuth 2.1 (django-oauth-toolkit) ────────────────────────────────────────
+# Django actúa como authorization server del servicio MCP. El MCP es el resource
+# server: valida los access tokens contra estas mismas tablas.
+#
+# El cliente (Claude) se registra solo vía DCR contra /o/register/, así que en
+# el diálogo del conector alcanza con la URL: los campos de client id y secreto
+# quedan vacíos. También se puede crear la Application a mano desde el admin y
+# copiar las credenciales, si se prefiere un cliente fijo.
+OAUTH2_PROVIDER = {
+    'SCOPES': {
+        'fractalia:operar': 'Revisar y confirmar reservas de Fractalia',
+    },
+    'DEFAULT_SCOPES': ['fractalia:operar'],
+
+    # OAuth 2.1: PKCE obligatorio y sin grants implícitos.
+    'PKCE_REQUIRED': True,
+    'ALLOWED_SCHEMES': ['https'] if not DEBUG else ['https', 'http'],
+
+    # Tokens cortos + refresh: si se filtra uno, la ventana es chica.
+    'ACCESS_TOKEN_EXPIRE_SECONDS': 60 * 60 * 8,        # 8 horas
+    'REFRESH_TOKEN_EXPIRE_SECONDS': 60 * 60 * 24 * 30,  # 30 días
+    'ROTATE_REFRESH_TOKEN': True,
+
+    # Registro dinámico de clientes (RFC 7591). Es lo que permite dejar
+    # vacíos los campos OAuth del diálogo de Claude: el cliente se registra
+    # solo contra /o/register/.
+    #
+    # El registro es abierto porque el cliente que se registra todavía no
+    # tiene acceso a nada: para operar, una persona tiene que iniciar sesión
+    # en Django y aprobar el consentimiento. Lo único que habilita el registro
+    # abierto es crear filas de Application.
+    'DCR_ENABLED': True,
+    'DCR_REGISTRATION_PERMISSION_CLASSES': (
+        'oauth2_provider.dcr.AllowAllDCRPermission',
+    ),
+
+    # RFC 9700 (Security BCP) — en DOT 3.x vienen apagadas para no romper
+    # instalaciones viejas, y pasan a ser el default en 4.0. Las activamos ya:
+    # rechazan los grants inseguros de OAuth 2.0 y endurecen el resto.
+    'COMPLIANT_BCP_RFC9700_IMPLICIT_GRANT': True,       # sin grant implícito
+    'COMPLIANT_BCP_RFC9700_PASSWORD_GRANT': True,       # sin password grant
+    'COMPLIANT_BCP_RFC9700_PKCE_METHOD': True,          # S256 únicamente, sin "plain"
+    'COMPLIANT_BCP_RFC9700_ACCESS_TOKEN_TRANSPORT': True,  # token solo por header
+    'COMPLIANT_BCP_RFC9700_AUTHZ_RESPONSE_ISS': True,   # iss en la respuesta (anti mix-up)
+    'COMPLIANT_BCP_RFC9700_TOKEN_STORAGE': True,        # tokens hasheados en base
+    # Estas cuatro solo elevan a error los avisos de `manage.py check --deploy`.
+    'COMPLIANT_BCP_RFC9700_REFRESH_TOKEN': True,
+    'COMPLIANT_BCP_RFC9700_REDIRECT_URI_SCHEME': True,
+    'COMPLIANT_BCP_RFC9700_REDIRECT_URI_MATCHING': True,
+    'COMPLIANT_BCP_RFC9700_PKCE_REQUIRED': True,
+
+    'REFRESH_TOKEN_REUSE_PROTECTION': True,
+    'ALLOWED_REDIRECT_URI_SCHEMES': ['https'] if not DEBUG else ['https', 'http'],
+    'ALLOW_URI_WILDCARDS': False,
+
+    'OAUTH2_VALIDATOR_CLASS': 'oauth2_provider.oauth2_validators.OAuth2Validator',
+}
+
+# URL pública del authorization server. Debe coincidir con el issuer que
+# el MCP anuncia en su metadata de resource server.
+OAUTH_ISSUER = os.environ.get(
+    'OAUTH_ISSUER', 'https://admin.alejandrobenitez.com')
 
 
 # CSRF — construir desde ALLOWED_HOSTS o env var

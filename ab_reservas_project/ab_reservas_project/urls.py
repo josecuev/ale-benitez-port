@@ -11,6 +11,11 @@ admin.site.site_title = "Admin Fractalia"
 admin.site.index_title = "Administración del estudio"
 
 urlpatterns = [
+    # OAuth 2.1 — authorization server del servicio MCP.
+    # Expone /o/authorize/, /o/token/, /o/revoke_token/, /o/introspect/
+    # y /o/.well-known/oauth-authorization-server
+    path("o/", include("oauth2_provider.urls", namespace="oauth2_provider")),
+
     path("", include("app_links.urls")),
     path("fractalia/", include("app_fractalia.urls")),
     path("", include("app_portfolio.urls")),

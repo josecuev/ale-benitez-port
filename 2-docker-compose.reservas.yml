@@ -12,6 +12,28 @@ services:
       - db
     command: poetry run python manage.py runserver 0.0.0.0:8000
 
+  # Servicio MCP: asiste la confirmación de pre-reservas.
+  # Misma imagen que Django — usa la ORM directamente, sin migraciones propias.
+  # entrypoint.sh siempre levanta uvicorn, por eso se sobreescribe.
+  mcp:
+    build:
+      context: ./ab_reservas_project
+      dockerfile: Dockerfile
+    container_name: ab-reservas-mcp
+    env_file:
+      - ./ab_reservas_project/.env
+    environment:
+      MCP_TRANSPORT: http
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: "8001"
+    volumes:
+      - ./ab_reservas_project:/app
+    depends_on:
+      - db
+    ports:
+      - "8001:8001"
+    entrypoint: ["python", "-m", "mcp_server"]
+
   nginx:
     image: nginx:alpine
     container_name: ab-reservas-nginx

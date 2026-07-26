@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "fractalia": {
+      "command": "docker",
+      "args": [
+        "exec", "-i",
+        "-e", "MCP_TRANSPORT=stdio",
+        "ab-reservas-mcp",
+        "python", "-m", "mcp_server"
+      ]
+    }
+  }
+}
