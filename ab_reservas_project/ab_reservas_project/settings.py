@@ -240,6 +240,13 @@ OAUTH2_PROVIDER = {
     'OAUTH2_VALIDATOR_CLASS': 'oauth2_provider.oauth2_validators.OAuth2Validator',
 }
 
+# La pantalla de consentimiento de OAuth exige sesión iniciada. Sin esto Django
+# usa su default /accounts/login/, que en este proyecto no existe: el flujo del
+# conector terminaba en un 404 justo al autorizar. El único login real es el
+# del admin.
+LOGIN_URL = '/admin/login/'
+LOGIN_REDIRECT_URL = '/admin/'
+
 # URL pública del authorization server. Debe coincidir con el issuer que
 # el MCP anuncia en su metadata de resource server.
 OAUTH_ISSUER = os.environ.get(
