@@ -938,11 +938,44 @@ _TABLAS = {
 }
 
 # Credenciales y sesiones: nunca, por más que la consulta sea de solo lectura.
+# Ojo: esto es una lista negra sobre texto, o sea que vale lo que valga la
+# imaginación de quien la escribió. La defensa que de verdad sostiene el
+# invariante es el rol de Postgres (ver _conexion_lectura): si la tabla no está
+# concedida al rol, no se lee aunque el filtro falle.
 _PROHIBIDAS = ("auth_user", "django_session", "auth_permission",
                "auth_group", "pg_", "information_schema")
 
 _ESCRITURA = ("insert", "update", "delete", "drop", "alter", "create", "truncate",
               "grant", "revoke", "copy", "vacuum", "reindex", "call", "do ")
+
+# consulta_sql permite extraer datos personales en volumen, así que viene
+# apagado y se habilita a propósito con MCP_SQL_LIBRE=1.
+_SQL_LIBRE = os.environ.get("MCP_SQL_LIBRE", "0") == "1"
+
+
+def _conexion_lectura():
+    """
+    Conexión con el rol restringido `mcp_lectura`, que solo tiene SELECT sobre
+    las tablas de negocio. Es una conexión aparte de la de Django a propósito:
+    la de Django usa el rol dueño de la base y podría leer y escribir todo.
+    """
+    import psycopg
+
+    usuario = os.environ.get("MCP_SQL_USER", "")
+    clave = os.environ.get("MCP_SQL_PASSWORD", "")
+    if not usuario or not clave:
+        raise RuntimeError(
+            "Faltan MCP_SQL_USER / MCP_SQL_PASSWORD: no hay rol restringido "
+            "configurado. Sin eso la consulta libre no se habilita."
+        )
+    return psycopg.connect(
+        host=os.environ.get("POSTGRES_HOST", "db"),
+        port=os.environ.get("POSTGRES_PORT", "5432"),
+        dbname=os.environ.get("POSTGRES_DB", "ab_reservas"),
+        user=usuario,
+        password=clave,
+        connect_timeout=5,
+    )
 
 
 @mcp.tool
@@ -1013,12 +1046,25 @@ def consulta_sql(sql: str, limite: int = 500) -> dict:
     Consulta SQL libre de SOLO LECTURA sobre la base. Para cualquier análisis que
     los otros tools no cubran: joins, agregaciones, ventanas, lo que necesites.
 
-    Solo SELECT o WITH. Corre en transacción de solo lectura y se revierte
-    siempre. Las tablas de usuarios y sesiones están fuera de alcance.
-    Usá esquema() para ver nombres de tablas y columnas.
+    Solo SELECT o WITH, con un rol de Postgres que únicamente tiene permiso de
+    lectura sobre las tablas de negocio. Las de usuarios y sesiones están fuera
+    de alcance. Usá esquema() para ver nombres de tablas y columnas.
+
+    Puede devolver datos personales de clientes en volumen, así que viene
+    deshabilitado salvo que se active a propósito.
     """
+    import logging
     import re as _re
-    from django.db import connection, transaction
+
+    log = logging.getLogger("mcp.sql")
+
+    if not _SQL_LIBRE:
+        return {"ok": False,
+                "error": "La consulta SQL libre está deshabilitada en este entorno.",
+                "motivo": "Permite extraer datos personales de clientes en volumen.",
+                "alternativa": "Usá conversion(), trafico(), demanda(), clientes() "
+                               "o datos(tabla), que cubren los análisis habituales.",
+                "habilitar": "Se activa con MCP_SQL_LIBRE=1 en el entorno del servicio."}
 
     limpio = _re.sub(r"--[^\n]*|/\*.*?\*/", " ", sql or "", flags=_re.S).strip().rstrip(";")
     if not limpio:
@@ -1040,18 +1086,23 @@ def consulta_sql(sql: str, limite: int = 500) -> dict:
                          f"o sesiones). Usá esquema() para ver qué sí podés consultar."}
 
     tope = max(1, min(limite, 5000))
+    # Queda rastro de toda consulta ejecutada, antes de ejecutarla.
+    log.warning("[consulta_sql] %s", " ".join(limpio.split())[:500])
     try:
-        # La transacción de solo lectura es la garantía real: aunque algo
-        # burlara los filtros de arriba, Postgres rechaza la escritura.
-        with transaction.atomic():
-            with connection.cursor() as cur:
+        # Dos defensas independientes: el rol solo tiene SELECT sobre las tablas
+        # de negocio, y la transacción READ ONLY impide cualquier escritura.
+        with _conexion_lectura() as conexion:
+            with conexion.cursor() as cur:
                 cur.execute("SET TRANSACTION READ ONLY")
-                cur.execute("SET LOCAL statement_timeout = '15s'")
+                cur.execute("SET statement_timeout = '15s'")
                 cur.execute(f"SELECT * FROM ({limpio}) AS _q LIMIT {tope + 1}")
-                columnas = [c[0] for c in cur.description]
+                columnas = [c.name for c in cur.description]
                 filas = cur.fetchall()
-            transaction.set_rollback(True)
+            conexion.rollback()
+    except RuntimeError as e:
+        return {"ok": False, "error": str(e)}
     except Exception as e:
+        log.warning("[consulta_sql] falló: %s", str(e)[:200])
         return {"ok": False, "error": f"Error al ejecutar: {str(e).strip()[:400]}"}
 
     truncado = len(filas) > tope

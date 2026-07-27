@@ -92,6 +92,29 @@ llamada. Para cortar de raíz, desactivar el usuario en *Users*.
 **Vencimientos**: access token 8 horas, refresh 30 días con rotación y
 protección de reuso.
 
+## Consulta SQL libre (`consulta_sql`)
+
+Viene **apagada**. Permite extraer datos personales de clientes en volumen, así
+que se habilita solo cuando hace falta un análisis que los otros tools no cubren.
+
+El rol `mcp_lectura` se crea una vez:
+
+```sh
+CLAVE=$(python3 -c 'import secrets;print(secrets.token_urlsafe(24))')
+docker cp ab_reservas_project/sql/rol_lectura_mcp.sql ab-db:/tmp/rol.sql
+docker exec -i ab-db psql -U postgres -d ab_reservas -v clave="'$CLAVE'" -f /tmp/rol.sql
+echo "MCP_SQL_USER=mcp_lectura"    >> ab_reservas_project/.env.prod
+echo "MCP_SQL_PASSWORD=$CLAVE"     >> ab_reservas_project/.env.prod
+```
+
+Ese rol solo tiene `SELECT` sobre las tablas de negocio: `auth_user`,
+`django_session` y los catálogos de Postgres le dan *permission denied*. El
+límite lo aplica la base, no un filtro de texto en el código.
+
+Para habilitar el tool, agregar `MCP_SQL_LIBRE=1` al servicio `mcp` y
+reiniciarlo. Cada consulta ejecutada queda registrada en `docker logs ab-mcp`
+con el prefijo `[consulta_sql]`. Conviene volver a apagarlo al terminar.
+
 ## Notas
 
 - El MCP no publica puertos al host: solo se llega por Traefik.
