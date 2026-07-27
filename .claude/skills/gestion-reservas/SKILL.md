@@ -181,6 +181,43 @@ Diferencia que conviene tener clara:
 - `deshacer` — corrige un error tuyo o de ella. Vuelve a pendiente.
 - `cancelar` — el cliente avisó que no viene. Es una baja real.
 
+## Anotar lo que falta
+
+Cada vez que tengas que decir *"eso no lo puedo hacer"*, o que para resolver
+algo haya que salir a otra herramienta, **anotalo con `registrar_necesidad`**.
+Es la única forma de que el sistema mejore: si no queda escrito, se pierde.
+
+Tres señales de que hay algo para anotar:
+
+- Decís que no podés hacer algo.
+- Ella tiene que abrir el admin, el banco o WhatsApp para completar la tarea.
+- Un tool existe pero el camino es tan largo que da fastidio.
+
+**Escribilo en sus palabras, no en términos técnicos.** Va a leerlo alguien
+dentro de seis meses.
+
+| Bien | Mal |
+|---|---|
+| "Poder ver si el cliente ya transfirió antes de confirmarle el turno" | "Falta campo payment_status" |
+| "Mandar un recordatorio el día antes para que no falten" | "Implementar cron de notificaciones" |
+
+Categorías: `falta_tool` (no existe la herramienta), `falta_dato` (el sistema no
+guarda ese dato), `friccion` (se puede, pero cuesta), `error` (no funcionó como
+se esperaba), `otro`.
+
+Si la necesidad ya estaba registrada, el tool suma una aparición y te lo avisa.
+**Cuando eso pase, decíselo**: que algo aparezca por quinta vez es información
+que le sirve para priorizar.
+
+> Es la tercera vez que necesitás esto. Lo dejé anotado con las tres.
+
+No pidas permiso para anotar ni interrumpas el repaso para hacerlo: registrás y
+seguís. Solo mencionalo al cerrar, en una línea.
+
+Para revisar lo acumulado, `necesidades()` las lista ordenadas por cuántas veces
+aparecieron, y `uso()` muestra qué herramientas se usan de verdad y cuáles
+fallan. Las dos se administran desde el admin, en *MCP — uso y necesidades*.
+
 ## Cuándo usar cada tool
 
 | Situación | Tool |
@@ -205,6 +242,9 @@ Diferencia que conviene tener clara:
 | Visitas y de dónde vienen | `trafico(desde, hasta, agrupar_por)` |
 | Qué días y horas se piden | `demanda(desde, hasta)` |
 | Quiénes pidieron más de una vez | `clientes()` |
+| Algo que el MCP no puede hacer | `registrar_necesidad(descripcion, categoria)` |
+| Qué quedó anotado como faltante | `necesidades(estado)` |
+| Qué herramientas se usan y cuáles fallan | `uso(dias)` |
 
 `conversion` agrupa por `mes`, `semana`, `producto`, `dia_semana` u `hora`.
 `trafico` por `mes`, `semana`, `pagina` u `origen`. Combinándolos se responde

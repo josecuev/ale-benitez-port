@@ -116,17 +116,59 @@ def whatsapp(tel: str, mensaje: str) -> dict | None:
     return {"url": f"https://wa.me/{destino}?text={quote(mensaje)}", "mensaje": mensaje}
 
 
+def usuario_actual() -> str:
+    """Usuario del token OAuth, o vacío en stdio (donde no hay autenticación)."""
+    try:
+        from fastmcp.server.dependencies import get_access_token
+        tok = get_access_token()
+        return (tok.subject or tok.client_id or "") if tok else ""
+    except Exception:
+        return ""
+
+
+def _registrar_uso(tool: str, exito: bool, error: str, ms: int):
+    """
+    Telemetría de uso. Nunca debe tumbar una operación: si falla el registro,
+    se ignora en silencio — perder una métrica es barato, perder una
+    confirmación de reserva no.
+    """
+    try:
+        from app_mcp.models import UsoTool
+        UsoTool.objects.create(
+            tool=tool, usuario=usuario_actual(), exito=exito,
+            detalle_error=(error or "")[:2000], duracion_ms=ms,
+        )
+    except Exception:
+        pass
+
+
 def con_db(fn):
     """
     FastMCP corre los tools sync en un pool de hilos; Django abre una conexión
     por hilo. Sin esto quedan conexiones colgadas.
+
+    De paso deja registrado el uso, que es lo que después responde "qué se usa
+    de verdad" sin tener que preguntarle a nadie.
     """
     @wraps(fn)
     def wrapper(*args, **kwargs):
+        import time
         close_old_connections()
+        inicio = time.monotonic()
+        exito, error = True, ""
         try:
-            return fn(*args, **kwargs)
+            resultado = fn(*args, **kwargs)
+            # Los tools devuelven ok=False para errores esperados; eso también
+            # es señal: un tool que "funciona" pero siempre dice que no, molesta.
+            if isinstance(resultado, dict) and resultado.get("ok") is False:
+                exito, error = False, str(resultado.get("error", ""))
+            return resultado
+        except Exception as e:
+            exito, error = False, f"{type(e).__name__}: {e}"
+            raise
         finally:
+            _registrar_uso(fn.__name__, exito, error,
+                           int((time.monotonic() - inicio) * 1000))
             close_old_connections()
     return wrapper
 

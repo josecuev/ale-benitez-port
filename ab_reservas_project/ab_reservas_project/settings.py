@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     'app_fractalia',
     'app_portfolio',
     'app_analytics',
+    'app_mcp',
 ]
 
 MIDDLEWARE = [

@@ -1113,6 +1113,127 @@ def consulta_sql(sql: str, limite: int = 500) -> dict:
                                           for v in f])) for f in filas]}
 
 
+# ─────────────────── relevamiento de lo que falta ──────────────────────────
+
+@mcp.tool
+@con_db
+def registrar_necesidad(descripcion: str, categoria: str = "falta_tool",
+                        contexto: str = "", tool_relacionada: str = "") -> dict:
+    """
+    Anota algo que el encargado quiso hacer y el MCP no permitió.
+
+    Usalo cada vez que tengas que responder "eso no lo puedo hacer", o cuando
+    para resolver algo haya que salir a otra herramienta. Escribí la necesidad
+    en palabras del encargado, no en términos técnicos.
+
+    `categoria`: falta_tool, falta_dato, friccion, error, otro.
+    Si la misma necesidad ya estaba registrada, suma una aparición en vez de
+    duplicarla.
+    """
+    from app_mcp.models import Necesidad
+    from .bootstrap import usuario_actual
+
+    texto = (descripcion or "").strip()
+    if len(texto) < 20 or len(texto.split()) < 4:
+        return {"ok": False,
+                "error": "Describí la necesidad con más detalle: lo que se lee "
+                         "dentro de un año tiene que alcanzar para entender qué "
+                         "hacía falta.",
+                "ejemplo": "Poder ver si el cliente ya transfirió antes de "
+                           "confirmarle el turno."}
+
+    validas = [c for c, _ in Necesidad.CATEGORIAS]
+    if categoria not in validas:
+        return {"ok": False, "error": f"Categoría inválida.", "opciones": validas}
+
+    obj, nueva = Necesidad.registrar(
+        descripcion=texto, categoria=categoria, contexto=contexto,
+        tool_relacionada=tool_relacionada, usuario=usuario_actual(),
+    )
+    return {
+        "ok": True,
+        "registrada": obj.descripcion[:100],
+        "es_nueva": nueva,
+        "veces_que_apareció": obj.veces,
+        "categoria": obj.get_categoria_display(),
+        "mensaje": ("Anotado." if nueva else
+                    f"Ya estaba registrada; van {obj.veces} veces. "
+                    f"Vale mencionárselo: es algo que le pasa seguido."),
+    }
+
+
+@mcp.tool
+@con_db
+def necesidades(estado: str = "", limite: int = 30) -> dict:
+    """
+    Lo que el MCP todavía no cubre, ordenado por cuántas veces apareció.
+    `estado`: nueva, en_analisis, planificada, implementada, descartada.
+    """
+    from app_mcp.models import Necesidad
+
+    qs = Necesidad.objects.all()
+    if estado:
+        validos = [e for e, _ in Necesidad.ESTADOS]
+        if estado not in validos:
+            return {"ok": False, "error": "Estado inválido.", "opciones": validos}
+        qs = qs.filter(estado=estado)
+
+    items = list(qs[:max(1, min(limite, 100))])
+    return {
+        "ok": True,
+        "total": qs.count(),
+        "items": [{
+            "necesidad": n.descripcion,
+            "veces": n.veces,
+            "tipo": n.get_categoria_display(),
+            "estado": n.get_estado_display(),
+            "herramienta": n.tool_relacionada or None,
+            "desde": n.primera_vez.astimezone(ahora().tzinfo).date().isoformat(),
+        } for n in items],
+        "nota": "Se administran desde el admin de Django, en 'MCP — uso y "
+                "necesidades'.",
+    }
+
+
+@mcp.tool
+@con_db
+def uso(dias: int = 30) -> dict:
+    """
+    Qué herramientas se usan de verdad y cuáles fallan. Sirve para saber qué
+    conviene pulir y qué no está aportando nada.
+    """
+    from django.db.models import Avg, Count, Q
+
+    from app_mcp.models import UsoTool
+
+    desde = ahora() - timedelta(days=max(1, min(dias, 365)))
+    qs = UsoTool.objects.filter(momento__gte=desde)
+    resumen = (qs.values("tool")
+               .annotate(llamadas=Count("id"),
+                         fallas=Count("id", filter=Q(exito=False)),
+                         ms_promedio=Avg("duracion_ms"))
+               .order_by("-llamadas"))
+
+    filas = [{
+        "herramienta": r["tool"],
+        "llamadas": r["llamadas"],
+        "fallas": r["fallas"],
+        "ms_promedio": int(r["ms_promedio"]) if r["ms_promedio"] else None,
+    } for r in resumen]
+
+    usadas = {f["herramienta"] for f in filas}
+    todas = {t.name for t in mcp._tool_manager._tools.values()} \
+        if hasattr(mcp, "_tool_manager") else set()
+
+    return {
+        "ok": True,
+        "desde": desde.date().isoformat(),
+        "total_llamadas": sum(f["llamadas"] for f in filas),
+        "por_herramienta": filas,
+        "nunca_usadas": sorted(todas - usadas) or None,
+    }
+
+
 # ──────────────────────────── retroceso ────────────────────────────────────
 
 @mcp.tool
