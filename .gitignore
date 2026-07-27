@@ -4,3 +4,6 @@
 staticfiles
 ab_reservas_project/media/
 .dumps/
+
+__pycache__/
+*.pyc

@@ -1,0 +1,29 @@
+"""
+Ícono del conector: la F de Fractalia, negra sobre el amarillo de marca.
+
+GENERADO — no editar a mano. Sale de scripts/generar_icono.py.
+
+Va embebido como data URI porque el ícono viaja dentro del protocolo, no como
+una URL que el cliente tenga que ir a buscar: funciona igual en una sesión web
+que en un cliente de escritorio, y no depende de que el sitio esté arriba.
+"""
+from mcp.types import Icon
+
+AMARILLO_MARCA = "#ffe927"
+
+_PNG_128 = (
+    "iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAACXBIWXMAAB2HAAAdhwGP5fFlAAAAGXRFWHRTb2Z0d2FyZQB3d3cuaW5rc2NhcGUub3Jnm+48GgAABU9JREFUeJzt201sVFUYh/HnnFFURIg6pTaCwMJOaxPEUBHiQtwTmhiscQE7F4bEhSYmylZZmWiiYthK4gI2ykJNXACaCBQllpC2MySiKYG2NoSPFkrJ3ONiqI79nHZm7rF9/7/VcDsz903uw53pvacuhEDNXGluJeO3Axtx5AisAx4FVgD3125HJtwFRoCrwJ9AAegmE47zeL6vVjtxVQcw3LqZEHYT6ASaajKVzOUyjsM4f4hsz9lq3miBATjPUPNOnHufwPPVDCBV6yKwn8b8UZj/wZx/AEOt2yAcADbNd2dSV78Skr00Fk7P50WVB3ClfTmZmx+DewNwCxhQ6i8BDjI++g5r+m9X8oLKAhhoa8MnhyE8U+WAko7zFJNOmgq9cz1x7gAGWrfjw9fAqhoNJ+kYAf8Kq3t+mO1Jfta3GGzpwIfv0cFfjFZAcpTBlp2zPWnmM0Dpf/53wIN1GE7SMw5+x0xngukDGGhrwxd/BlbWeThJx3WKybbpvhNM/Qi4tPYhfPErdPCXklVk3BGutC+f/IOpASxb/gmwMY2pJE2ujczIR1O2/ucjYCC3Be9OMteXQ1msEoJ/kcaeUxMbyg6083h3EB38pcxD8ik4V7bhnqHmDnR5d+lztDPYsmPin/8G4Nx7UQaS9Dn2/fMwhADDLe0knIk5k6TMJc/RUPitdAYosjvyOJK2kNkN4ME5HLtizyNpC50ALlx+upWM74k9jkTgXc7fW8MnFiW87IFnY88hsYSNHkcu9hgSTc4TWB97Colmg0d3/Sxb6Sn90YbY9IgHlsWeQqJ5QHf+jLsv9gDz8fCG/tgjVGT04trYI1RMZwDjFIBxCsA4BWCcAjBOARinAIxTAMYpAOMUgHEKwDgFYJwCME4BGKcAjFMAxikA4xSAcYtqSVitLaalW/WiM4BxCsA4BWCcAjBOARinAIxTAMYpAOMUgHGmrwRW+8emS+FKos4AxikA4xSAcQrAOAVgnAIwTgEYpwCMUwDGKQDjFIBxCsA4BWCcAjBOARinAIxTAMYpAONMLwlbCku6qqUzgHEKwDgFYJwCME4BGKcAjFMAxikA4xSAcQrAOAVgnAIwTgEYpwCMUwDGKQDjFIBxCsA4BWCcAjBOARinAIxTAMa5MJgLsYeQeHQGMM4D47GHkGjueGAk9hQSzU0P3Ig9hURzw+O4GHsKicX97gnkY48h0eQ90B17ConmnCcTjseeQiJx7pgLIcBQyyXgydjzSIoC/TT2PVW6EOQ4EnkcSZsLh2HiSqDzh6IOIzEcgokAsj1nga6Y00iawilW57uh/F5AYH+0eSRdPnww8bD0JbD00DGUOwNsjjOVpKSL1fmtUDrwZXcDQyAJbwJJpMGk/hJC8tbEwYfJt4OfyJ8BDqY9laQkhAM0Fk6Xb5q6HuDWnbfR1cGl6Dx3b707eePUANZfHKOYvA5cT2MqScU1PLtY03978g+mXxHUVOjFuw5grN6TSd2N4cJOsn3T3vSbeUlYtvcEgddQBIvZGMF10pD/aaYnlP0aOIPh1pdIwjfAqhoPJ/V1DZd00FD4cbYnzb0oNNt7gmKyDThfq8mk7s7h2TrXwYdKVwU3FXoZH90CfIGuE/yfJYTwGeOjW2f6zJ9s7o+AyQZyW3DucxztC5lQ6qYLz16yfb/M50XzD6D0Msdgyw4c+yC8sIA3kNo5iU8+JHvh2/IrfJVaYABl/mreRMjsgfAqsKa6N5OKBPpx7ggkX07c1Vuo6gMoN9zaTMJ2CJuAZgjrwD0GrACW1W5HJowDIxCugv8DQgFcN84do6HnQq128jdxpFSagRqivwAAAABJRU5ErkJggg=="
+)
+
+_SVG = (
+    "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCIgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0Ij4KICA8cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHJ4PSIxMyIgZmlsbD0iI2ZmZTkyNyIvPgogIDxwYXRoIGQ9Ik0yMS41IDE0IEg0Mi41IFYyMy41IEgzMS41IFYyOC41IEgzOS41IFYzOCBIMzEuNSBWNTAgSDIxLjUgWiIgZmlsbD0iIzBhMGEwYSIvPgo8L3N2Zz4K"
+)
+
+# El PNG va primero: es el que entienden todos los clientes. El SVG queda de
+# respaldo para los que escalan sin pixelar.
+ICONOS = [
+    Icon(src="data:image/png;base64," + _PNG_128,
+         mimeType="image/png", sizes=["128x128"]),
+    Icon(src="data:image/svg+xml;base64," + _SVG,
+         mimeType="image/svg+xml", sizes=["any"]),
+]

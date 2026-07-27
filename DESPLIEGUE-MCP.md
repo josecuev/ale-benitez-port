@@ -92,7 +92,7 @@ llamada. Para cortar de raíz, desactivar el usuario en *Users*.
 **Vencimientos**: access token 8 horas, refresh 30 días con rotación y
 protección de reuso.
 
-## Consulta SQL libre (`consulta_sql`)
+## Consulta SQL libre (`analisis_a_medida`)
 
 Viene **apagada**. Permite extraer datos personales de clientes en volumen, así
 que se habilita solo cuando hace falta un análisis que los otros tools no cubren.
@@ -113,7 +113,7 @@ límite lo aplica la base, no un filtro de texto en el código.
 
 Para habilitar el tool, agregar `MCP_SQL_LIBRE=1` al servicio `mcp` y
 reiniciarlo. Cada consulta ejecutada queda registrada en `docker logs ab-mcp`
-con el prefijo `[consulta_sql]`. Conviene volver a apagarlo al terminar.
+con el prefijo `[analisis_a_medida]`. Conviene volver a apagarlo al terminar.
 
 ## Notas
 

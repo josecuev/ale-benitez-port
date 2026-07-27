@@ -18,6 +18,7 @@ from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
 from .auth import construir_auth
+from .icono import ICONOS
 from .bootstrap import (
     ahora, hoy, dt_de, fecha_larga, parse_fecha, parse_hora,
     cliente_str, whatsapp, telefono_internacional, con_db, registrar,
@@ -52,7 +53,8 @@ NUNCA uses vocabulario del sistema. Ni una vez:
 Los estados se dicen en castellano: "sin responder", "respondida", "confirmada",
 "cancelada". Si un tool devuelve un error, traducilo a qué significa para ella;
 no pegues el texto del error. Tampoco nombres las herramientas que usás: ella no
-sabe ni tiene por qué saber que existe algo llamado bandeja() o conversion().
+sabe ni tiene por qué saber que existe algo llamado pendientes_por_revisar() o
+cierre_de_pedidos().
 
 EL ORDEN IMPORTA
 Primero la respuesta. Después, y solo si cambia lo que haría, la salvedad —en
@@ -85,31 +87,32 @@ CÓMO HABLAR
   plata. Un pedido sin responder es un cliente que se fue con otro.
 
 CONTAR, NO LISTAR
-Al abrir, llamá estado_del_dia() y contá tres cosas en tres líneas: qué hay hoy,
+Al abrir, llamá resumen_del_dia() y contá tres cosas en tres líneas: qué hay hoy,
 qué está en riesgo, y qué conviene hacer primero. Un número que importa, no
 todos los números; los demás quedan por si pregunta. Si algo cambió respecto de
 ayer o de la semana pasada, ese contraste es la historia; si no cambió nada, no
 lo menciones.
 
 CONFLICTOS PRIMERO
-Antes del repaso, conflictos(). Si hay alguno va primero, porque cada día que
+Antes del repaso, horarios_superpuestos(). Si hay alguno va primero, porque cada día que
 pasa se agrava. Nunca plantees un conflicto sin una salida: el tool ya devuelve
 horarios libres cercanos, ofrecelos en la misma frase. Si dos personas compiten
 por un horario, decí quién pidió primero y avisá ANTES de confirmar que al
 confirmar a una la otra queda sin lugar.
 
 EL REPASO, DE A UNO
-Usá siguiente(), nunca una lista larga. Por cada una decí: quién es, qué
+Usá siguiente_pendiente(), nunca una lista larga. Por cada una decí: quién es, qué
 producto, cuándo, y cuánto hace que espera. El producto siempre explícito: no es
 lo mismo un Fractabox de 45 minutos que un alquiler de 4 horas. Después de cada
-decisión, confirmar(codigo) o rechazar(codigo, motivo), y seguís. Una frase por
+decisión, confirmar_reserva(codigo) o rechazar_solicitud(codigo, motivo),
+y seguís. Una frase por
 resultado, sin repetir lo ya dicho.
 Avisá siempre, sin que pregunte: si el horario ya está tomado, y si hay otra
 persona esperando ese mismo horario.
 
 RESPONDERLE AL CLIENTE
 Cuando haya que escribirle a alguien, ofrecé armar el mensaje en vez de que lo
-redacte ella: link_mensaje() lo devuelve listo para tocar y enviar. No pegues el
+redacte ella: mensaje_de_whatsapp() lo devuelve listo para tocar y enviar. No pegues el
 texto completo salvo que lo pida: alcanza con decir de qué se trata y dar el link.
 
 DURACIONES PERMITIDAS
@@ -120,19 +123,20 @@ regla y preguntá si quiere hacerlo igual. No repitas con forzar=True por tu
 cuenta: es una excepción de staff y la decide ella.
 
 DESHACER vs CANCELAR
-deshacer() corrige un error y vuelve a pendiente; solo si la fecha no pasó.
-cancelar() es una baja real, porque el cliente avisó que no viene.
+volver_a_pendiente() corrige un error y vuelve a pendiente; solo si la fecha no
+pasó. cancelar_reserva() es una baja real, porque el cliente avisó que no viene.
 
 HABLAR DE CONVERSIÓN
 Los números solos no dicen nada, el contraste sí. Buscá el quiebre, no el
 promedio. Cruzá dos series antes de concluir: pocas solicitudes puede ser poca
-gente o mala conversión, y son problemas opuestos —trafico() te dice cuál—.
+gente o mala conversión, y son problemas opuestos —visitas_al_sitio() te dice
+cuál—.
 Cerrá con la consecuencia, no con la cifra. Correlación no es causa: si un
 cambio coincide con una fecha, decí que coincide.
 
 ANOTAR LO QUE FALTA
 Cada vez que tengas que decir "eso no lo puedo hacer", o que para resolver algo
-haya que salir a otra herramienta, anotalo con registrar_necesidad(). Escribilo
+haya que salir a otra herramienta, anotalo con anotar_algo_que_falta(). Escribilo
 en sus palabras, no en términos técnicos: "poder ver si el cliente ya
 transfirió", no "falta campo payment_status". Registrás y seguís, sin pedir
 permiso ni interrumpir el repaso; lo mencionás al cerrar en una línea. Si el
@@ -150,6 +154,7 @@ oportunidades: se repasan para cerrar la cola y ver el patrón.
 
 mcp = FastMCP(
     name="fractalia",
+    icons=ICONOS,
     # Fail-closed: con transporte HTTP fuera de debug, sin clave pública el
     # servicio no arranca. Ver auth.py.
     auth=construir_auth(
@@ -373,9 +378,10 @@ def _reglas_de_negocio(prod, f, hi, hf) -> list:
 
 # ────────────────────────────── revisión ───────────────────────────────────
 
-@mcp.tool(annotations=SOLO_LECTURA)
+@mcp.tool(title="Pendientes por revisar",
+          annotations=SOLO_LECTURA)
 @con_db
-def bandeja(incluir_vencidas: bool = True, limite: int = 50) -> dict:
+def pendientes_por_revisar(incluir_vencidas: bool = True, limite: int = 50) -> dict:
     """
     Cola de pre-reservas sin resolver, priorizada: primero las vencidas
     (fecha ya pasada), después las más próximas a ocurrir.
@@ -396,9 +402,10 @@ def bandeja(incluir_vencidas: bool = True, limite: int = 50) -> dict:
     }
 
 
-@mcp.tool(annotations=SOLO_LECTURA)
+@mcp.tool(title="Siguiente pendiente",
+          annotations=SOLO_LECTURA)
 @con_db
-def siguiente() -> dict:
+def siguiente_pendiente() -> dict:
     """
     Devuelve UNA sola pre-reserva para revisar, la más urgente sin resolver.
     Pensado para el repaso de a uno: mostrás esta, se decide, y volvés a llamar.
@@ -414,9 +421,10 @@ def siguiente() -> dict:
     return d
 
 
-@mcp.tool(annotations=SOLO_LECTURA)
+@mcp.tool(title="Buscar cliente",
+          annotations=SOLO_LECTURA)
 @con_db
-def buscar(texto: str, limite: int = 15) -> dict:
+def buscar_cliente(texto: str, limite: int = 15) -> dict:
     """
     Busca por nombre, teléfono o código, en cualquier estado.
     Usalo cuando te nombren a alguien y no tengas el código a mano.
@@ -435,9 +443,10 @@ def buscar(texto: str, limite: int = 15) -> dict:
     return {"ok": True, "encontrados": len(resultados), "resultados": resultados}
 
 
-@mcp.tool(annotations=SOLO_LECTURA)
+@mcp.tool(title="Ver solicitud completa",
+          annotations=SOLO_LECTURA)
 @con_db
-def ver(codigo: str) -> dict:
+def ver_solicitud(codigo: str) -> dict:
     """Ficha completa de una pre-reserva, con conflictos y el historial del cliente."""
     pb = _buscar(codigo)
     if not pb:
@@ -460,9 +469,10 @@ def ver(codigo: str) -> dict:
 
 # ─────────────────────────── cierre del ciclo ──────────────────────────────
 
-@mcp.tool(annotations=ESCRIBE)
+@mcp.tool(title="Confirmar reserva",
+          annotations=ESCRIBE)
 @con_db
-def confirmar(codigo: str) -> dict:
+def confirmar_reserva(codigo: str) -> dict:
     """
     Confirma la pre-reserva: crea la reserva y bloquea el horario en el calendario
     público. Devuelve el mensaje de WhatsApp listo para enviarle al cliente.
@@ -486,8 +496,8 @@ def confirmar(codigo: str) -> dict:
             "ok": False,
             "error": "Ese horario ya está confirmado para otra persona.",
             "ocupado_por": [cliente_str(b) for b in otras],
-            "sugerencia": f"Podés usar rechazar('{pb.reservation_code}') con el motivo, "
-                          f"o agenda('{pb.date.isoformat()}') para ofrecer otro horario.",
+            "sugerencia": f"Podés usar rechazar_solicitud('{pb.reservation_code}') con el motivo, "
+                          f"o ver_agenda('{pb.date.isoformat()}') para ofrecer otro horario.",
         }
 
     paquete = None
@@ -528,13 +538,14 @@ def confirmar(codigo: str) -> dict:
         "whatsapp": whatsapp(pb.client_phone, _mensaje_confirmacion(pb)),
         "calendario": "El horario quedó bloqueado en el calendario público.",
         "quedaron_sin_horario": [cliente_str(o) for o in compiten] or None,
-        "deshacer": f"deshacer('{pb.reservation_code}') mientras la fecha no haya pasado.",
+        "revertir": f"volver_a_pendiente('{pb.reservation_code}') mientras la fecha no haya pasado.",
     }
 
 
-@mcp.tool(annotations=ESCRIBE)
+@mcp.tool(title="Rechazar solicitud",
+          annotations=ESCRIBE)
 @con_db
-def rechazar(codigo: str, motivo: str = "") -> dict:
+def rechazar_solicitud(codigo: str, motivo: str = "") -> dict:
     """
     Marca la pre-reserva como respondida sin confirmar el turno: el cliente fue
     contactado pero no se le reserva el horario. Devuelve horarios libres cercanos
@@ -560,7 +571,7 @@ def rechazar(codigo: str, motivo: str = "") -> dict:
         "rechazada": cliente_str(pb),
         "motivo": motivo or "sin especificar",
         "alternativas_cercanas": _libres_cerca(pb),
-        "deshacer": f"deshacer('{pb.reservation_code}') mientras la fecha no haya pasado.",
+        "revertir": f"volver_a_pendiente('{pb.reservation_code}') mientras la fecha no haya pasado.",
     }
 
 
@@ -586,9 +597,10 @@ def _libres_cerca(pb, dias: int = 7) -> list:
 
 # ──────────────────────────── alta y agenda ────────────────────────────────
 
-@mcp.tool(annotations=SOLO_LECTURA)
+@mcp.tool(title="Productos y paquetes",
+          annotations=SOLO_LECTURA)
 @con_db
-def productos() -> dict:
+def productos_y_paquetes() -> dict:
     """Lista los productos activos, para saber qué se puede reservar."""
     return {"productos": [
         {"nombre": p.name, "tipo": p.get_product_type_display(),
@@ -599,7 +611,8 @@ def productos() -> dict:
     ]}
 
 
-@mcp.tool(annotations=ESCRIBE)
+@mcp.tool(title="Crear reserva",
+          annotations=ESCRIBE)
 @con_db
 def crear_reserva(cliente: str, telefono: str, producto: str, fecha: str,
                   hora_inicio: str, hora_fin: str, forzar: bool = False) -> dict:
@@ -627,7 +640,7 @@ def crear_reserva(cliente: str, telefono: str, producto: str, fecha: str,
             .filter(is_active=True, name__icontains=producto.strip()).first())
     if not prod:
         return {"ok": False, "error": f"No encontré un producto activo que coincida con "
-                                      f"'{producto}'. Usá productos() para ver la lista."}
+                                      f"'{producto}'. Usá productos_y_paquetes() para ver la lista."}
 
     inicio, fin = dt_de(f, hi), dt_de(f, hf)
     if fin <= inicio:
@@ -685,13 +698,14 @@ def crear_reserva(cliente: str, telefono: str, producto: str, fecha: str,
         "codigo": codigo,
         "reglas_salteadas": avisos or None,
         "whatsapp": whatsapp(tel, _mensaje_confirmacion(pb)),
-        "deshacer": f"deshacer('{codigo}') mientras la fecha no haya pasado.",
+        "revertir": f"volver_a_pendiente('{codigo}') mientras la fecha no haya pasado.",
     }
 
 
-@mcp.tool(annotations=ESCRIBE)
+@mcp.tool(title="Bloquear horario",
+          annotations=ESCRIBE)
 @con_db
-def bloquear(fecha: str, hora_inicio: str, hora_fin: str, motivo: str = "Bloqueado") -> dict:
+def bloquear_horario(fecha: str, hora_inicio: str, hora_fin: str, motivo: str = "Bloqueado") -> dict:
     """
     Tapa un horario sin cliente: uso propio, mantenimiento, etc.
     Queda ocupado en el calendario público.
@@ -726,12 +740,13 @@ def bloquear(fecha: str, hora_inicio: str, hora_fin: str, motivo: str = "Bloquea
     return {"ok": True, "bloqueado": f"{fecha_larga(f)}, {hi.strftime('%H:%M')}–"
                                      f"{hf.strftime('%H:%M')}",
             "motivo": motivo, "codigo": codigo,
-            "deshacer": f"deshacer('{codigo}') mientras la fecha no haya pasado."}
+            "revertir": f"volver_a_pendiente('{codigo}') mientras la fecha no haya pasado."}
 
 
-@mcp.tool(annotations=SOLO_LECTURA)
+@mcp.tool(title="Ver agenda",
+          annotations=SOLO_LECTURA)
 @con_db
-def agenda(fecha: str, dias: int = 1) -> dict:
+def ver_agenda(fecha: str, dias: int = 1) -> dict:
     """
     Qué hay confirmado y qué está libre. Además muestra las pre-reservas sin
     confirmar que pisan cada horario — eso el calendario público NO lo muestra,
@@ -778,9 +793,10 @@ def agenda(fecha: str, dias: int = 1) -> dict:
 
 # ───────────────────────────── informes ────────────────────────────────────
 
-@mcp.tool(annotations=SOLO_LECTURA)
+@mcp.tool(title="Resumen del día",
+          annotations=SOLO_LECTURA)
 @con_db
-def estado_del_dia() -> dict:
+def resumen_del_dia() -> dict:
     """
     Foto del día con comparaciones contra ayer y la semana pasada.
     Los deltas son el material para narrar el informe, no solo el número suelto.
@@ -824,9 +840,10 @@ def estado_del_dia() -> dict:
     }
 
 
-@mcp.tool(annotations=SOLO_LECTURA)
+@mcp.tool(title="Pendientes agrupados",
+          annotations=SOLO_LECTURA)
 @con_db
-def tabla_pendientes(agrupar_por: str = "fecha") -> dict:
+def pendientes_agrupados(agrupar_por: str = "fecha") -> dict:
     """
     Tabla de lo que falta confirmar. `agrupar_por`: 'fecha', 'producto' o 'antiguedad'.
     """
@@ -864,9 +881,10 @@ def tabla_pendientes(agrupar_por: str = "fecha") -> dict:
 
 # ───────────────────────── conflictos y análisis ───────────────────────────
 
-@mcp.tool(annotations=SOLO_LECTURA)
+@mcp.tool(title="Horarios superpuestos",
+          annotations=SOLO_LECTURA)
 @con_db
-def conflictos() -> dict:
+def horarios_superpuestos() -> dict:
     """
     Pre-reservas activas que necesitan una decisión porque se pisan entre sí o
     con una reserva ya confirmada. Cada una viene con alternativas libres para
@@ -923,9 +941,10 @@ def _rango(desde: str, hasta: str):
     return d, h
 
 
-@mcp.tool(annotations=SOLO_LECTURA)
+@mcp.tool(title="Cuántos pedidos se cierran",
+          annotations=SOLO_LECTURA)
 @con_db
-def conversion(desde: str = "", hasta: str = "", agrupar_por: str = "mes") -> dict:
+def cierre_de_pedidos(desde: str = "", hasta: str = "", agrupar_por: str = "mes") -> dict:
     """
     Embudo de conversión: visitas al calendario -> solicitudes -> respondidas ->
     confirmadas, con la tasa de cada paso.
@@ -1000,9 +1019,10 @@ def conversion(desde: str = "", hasta: str = "", agrupar_por: str = "mes") -> di
     }
 
 
-@mcp.tool(annotations=SOLO_LECTURA)
+@mcp.tool(title="Visitas al sitio",
+          annotations=SOLO_LECTURA)
 @con_db
-def trafico(desde: str = "", hasta: str = "", agrupar_por: str = "mes") -> dict:
+def visitas_al_sitio(desde: str = "", hasta: str = "", agrupar_por: str = "mes") -> dict:
     """
     Visitas al sitio. `agrupar_por`: mes, semana, pagina u origen.
     Sirve para separar un problema de demanda de uno de conversión.
@@ -1039,9 +1059,10 @@ def trafico(desde: str = "", hasta: str = "", agrupar_por: str = "mes") -> dict:
             "agrupado_por": agrupar_por, "filas": sorted(filas, key=orden)}
 
 
-@mcp.tool(annotations=SOLO_LECTURA)
+@mcp.tool(title="Días y horas más pedidos",
+          annotations=SOLO_LECTURA)
 @con_db
-def demanda(desde: str = "", hasta: str = "") -> dict:
+def dias_y_horas_pedidos(desde: str = "", hasta: str = "") -> dict:
     """
     Qué días y horas piden los clientes, cruzado con el horario configurado.
     Sirve para detectar demanda que hoy no se puede atender.
@@ -1082,9 +1103,10 @@ def demanda(desde: str = "", hasta: str = "") -> dict:
     }
 
 
-@mcp.tool(annotations=SOLO_LECTURA)
+@mcp.tool(title="Clientes que repiten",
+          annotations=SOLO_LECTURA)
 @con_db
-def clientes(minimo_solicitudes: int = 2) -> dict:
+def clientes_que_repiten(minimo_solicitudes: int = 2) -> dict:
     """Clientes que pidieron más de una vez, con el resultado de cada pedido."""
     porte = {}
     for p in PendingBooking.objects.exclude(client_phone="").order_by("created_at"):
@@ -1133,7 +1155,7 @@ _PROHIBIDAS = ("auth_user", "django_session", "auth_permission",
 _ESCRITURA = ("insert", "update", "delete", "drop", "alter", "create", "truncate",
               "grant", "revoke", "copy", "vacuum", "reindex", "call", "do ")
 
-# consulta_sql permite extraer datos personales en volumen, así que viene
+# analisis_a_medida permite extraer datos personales en volumen, así que viene
 # apagado y se habilita a propósito con MCP_SQL_LIBRE=1.
 _SQL_LIBRE = os.environ.get("MCP_SQL_LIBRE", "0") == "1"
 
@@ -1163,11 +1185,12 @@ def _conexion_lectura():
     )
 
 
-@mcp.tool(annotations=SOLO_LECTURA)
+@mcp.tool(title="Qué información hay guardada",
+          annotations=SOLO_LECTURA)
 @con_db
-def esquema() -> dict:
+def informacion_disponible() -> dict:
     """
-    Tablas y columnas disponibles para consulta_sql(), con sus tipos.
+    Tablas y columnas disponibles para analisis_a_medida(), con sus tipos.
     Llamalo antes de escribir una consulta para no adivinar nombres.
     """
     from django.apps import apps as django_apps
@@ -1188,12 +1211,13 @@ def esquema() -> dict:
                     "AT TIME ZONE 'America/Asuncion' para agrupar por día local."}
 
 
-@mcp.tool(annotations=SOLO_LECTURA)
+@mcp.tool(title="Listado completo",
+          annotations=SOLO_LECTURA)
 @con_db
-def datos(tabla: str, desde: str = "", hasta: str = "", limite: int = 500) -> dict:
+def listado_completo(tabla: str, desde: str = "", hasta: str = "", limite: int = 500) -> dict:
     """
     Filas crudas de una tabla, sin agregación, para analizar a gusto.
-    `tabla`: pre_reservas, reservas, productos, visitas, etc. — ver esquema().
+    `tabla`: pre_reservas, reservas, productos, visitas, etc. — ver informacion_disponible().
     """
     from django.apps import apps as django_apps
     if tabla not in _TABLAS:
@@ -1224,16 +1248,17 @@ def datos(tabla: str, desde: str = "", hasta: str = "", limite: int = 500) -> di
             "filas": filas}
 
 
-@mcp.tool(annotations=SOLO_LECTURA)
+@mcp.tool(title="Análisis a medida",
+          annotations=SOLO_LECTURA)
 @con_db
-def consulta_sql(sql: str, limite: int = 500) -> dict:
+def analisis_a_medida(sql: str, limite: int = 500) -> dict:
     """
     Consulta SQL libre de SOLO LECTURA sobre la base. Para cualquier análisis que
     los otros tools no cubran: joins, agregaciones, ventanas, lo que necesites.
 
     Solo SELECT o WITH, con un rol de Postgres que únicamente tiene permiso de
     lectura sobre las tablas de negocio. Las de usuarios y sesiones están fuera
-    de alcance. Usá esquema() para ver nombres de tablas y columnas.
+    de alcance. Usá informacion_disponible() para ver nombres de tablas y columnas.
 
     Puede devolver datos personales de clientes en volumen, así que viene
     deshabilitado salvo que se active a propósito.
@@ -1247,8 +1272,9 @@ def consulta_sql(sql: str, limite: int = 500) -> dict:
         return {"ok": False,
                 "error": "La consulta SQL libre está deshabilitada en este entorno.",
                 "motivo": "Permite extraer datos personales de clientes en volumen.",
-                "alternativa": "Usá conversion(), trafico(), demanda(), clientes() "
-                               "o datos(tabla), que cubren los análisis habituales.",
+                "alternativa": "Usá cierre_de_pedidos(), visitas_al_sitio(), "
+                               "dias_y_horas_pedidos(), clientes_que_repiten() "
+                               "o listado_completo(tabla), que cubren los análisis habituales.",
                 "habilitar": "Se activa con MCP_SQL_LIBRE=1 en el entorno del servicio."}
 
     limpio = _re.sub(r"--[^\n]*|/\*.*?\*/", " ", sql or "", flags=_re.S).strip().rstrip(";")
@@ -1268,11 +1294,12 @@ def consulta_sql(sql: str, limite: int = 500) -> dict:
     if tabla_prohibida:
         return {"ok": False,
                 "error": f"'{tabla_prohibida}' está fuera de alcance (credenciales "
-                         f"o sesiones). Usá esquema() para ver qué sí podés consultar."}
+                         f"o sesiones). Usá informacion_disponible() para ver qué sí "
+                         f"podés consultar."}
 
     tope = max(1, min(limite, 5000))
     # Queda rastro de toda consulta ejecutada, antes de ejecutarla.
-    log.warning("[consulta_sql] %s", " ".join(limpio.split())[:500])
+    log.warning("[analisis_a_medida] %s", " ".join(limpio.split())[:500])
     try:
         # Dos defensas independientes: el rol solo tiene SELECT sobre las tablas
         # de negocio, y la transacción READ ONLY impide cualquier escritura.
@@ -1287,7 +1314,7 @@ def consulta_sql(sql: str, limite: int = 500) -> dict:
     except RuntimeError as e:
         return {"ok": False, "error": str(e)}
     except Exception as e:
-        log.warning("[consulta_sql] falló: %s", str(e)[:200])
+        log.warning("[analisis_a_medida] falló: %s", str(e)[:200])
         return {"ok": False, "error": f"Error al ejecutar: {str(e).strip()[:400]}"}
 
     truncado = len(filas) > tope
@@ -1300,9 +1327,10 @@ def consulta_sql(sql: str, limite: int = 500) -> dict:
 
 # ─────────────────── relevamiento de lo que falta ──────────────────────────
 
-@mcp.tool(annotations=ESCRIBE)
+@mcp.tool(title="Anotar algo que falta",
+          annotations=ESCRIBE)
 @con_db
-def registrar_necesidad(descripcion: str, categoria: str = "falta_tool",
+def anotar_algo_que_falta(descripcion: str, categoria: str = "falta_tool",
                         contexto: str = "", tool_relacionada: str = "") -> dict:
     """
     Anota algo que el encargado quiso hacer y el MCP no permitió.
@@ -1347,9 +1375,10 @@ def registrar_necesidad(descripcion: str, categoria: str = "falta_tool",
     }
 
 
-@mcp.tool(annotations=SOLO_LECTURA)
+@mcp.tool(title="Mejoras pedidas",
+          annotations=SOLO_LECTURA)
 @con_db
-def necesidades(estado: str = "", limite: int = 30) -> dict:
+def mejoras_pedidas(estado: str = "", limite: int = 30) -> dict:
     """
     Lo que el MCP todavía no cubre, ordenado por cuántas veces apareció.
     `estado`: nueva, en_analisis, planificada, implementada, descartada.
@@ -1380,9 +1409,10 @@ def necesidades(estado: str = "", limite: int = 30) -> dict:
     }
 
 
-@mcp.tool(annotations=SOLO_LECTURA)
+@mcp.tool(title="Uso del asistente",
+          annotations=SOLO_LECTURA)
 @con_db
-def uso(dias: int = 30) -> dict:
+def uso_del_asistente(dias: int = 30) -> dict:
     """
     Qué herramientas se usan de verdad y cuáles fallan. Sirve para saber qué
     conviene pulir y qué no está aportando nada.
@@ -1421,9 +1451,10 @@ def uso(dias: int = 30) -> dict:
 
 # ──────────────────────────── retroceso ────────────────────────────────────
 
-@mcp.tool(annotations=DESTRUCTIVO)
+@mcp.tool(title="Volver a pendiente",
+          annotations=DESTRUCTIVO)
 @con_db
-def deshacer(codigo: str) -> dict:
+def volver_a_pendiente(codigo: str) -> dict:
     """
     Revierte la última acción sobre una reserva:
       confirmada -> vuelve a pendiente y se libera el horario
@@ -1496,9 +1527,10 @@ def _plantillas(pb) -> dict:
     }
 
 
-@mcp.tool(annotations=SOLO_LECTURA)
+@mcp.tool(title="Mensaje de WhatsApp",
+          annotations=SOLO_LECTURA)
 @con_db
-def link_mensaje(codigo: str, plantilla: str = "", mensaje: str = "") -> dict:
+def mensaje_de_whatsapp(codigo: str, plantilla: str = "", mensaje: str = "") -> dict:
     """
     Arma un link de WhatsApp hacia el cliente con el mensaje ya escrito, para que
     solo haya que tocarlo y enviar.
@@ -1538,13 +1570,14 @@ def link_mensaje(codigo: str, plantilla: str = "", mensaje: str = "") -> dict:
             **(whatsapp(pb.client_phone, texto) or {})}
 
 
-@mcp.tool(annotations=DESTRUCTIVO)
+@mcp.tool(title="Cancelar reserva",
+          annotations=DESTRUCTIVO)
 @con_db
-def cancelar(codigo: str, motivo: str = "") -> dict:
+def cancelar_reserva(codigo: str, motivo: str = "") -> dict:
     """
     Cancela una reserva YA confirmada y libera el horario.
 
-    Distinto de deshacer(): deshacer revierte un error tuyo y devuelve la
+    Distinto de volver_a_pendiente(): eso revierte un error tuyo y devuelve la
     pre-reserva a pendiente. Cancelar es una baja real —el cliente avisó que no
     viene— y deja la pre-reserva como cancelada, no pendiente.
     """
@@ -1581,9 +1614,10 @@ def cancelar(codigo: str, motivo: str = "") -> dict:
             "calendario": "El horario volvió a quedar libre."}
 
 
-@mcp.tool(annotations=SOLO_LECTURA)
+@mcp.tool(title="Historial de cambios",
+          annotations=SOLO_LECTURA)
 @con_db
-def historial(limite: int = 20) -> dict:
+def historial_de_cambios(limite: int = 20) -> dict:
     """Últimas acciones registradas sobre reservas, incluidas las hechas por el MCP."""
     from django.contrib.admin.models import LogEntry
     entradas = (LogEntry.objects.select_related("user", "content_type")
